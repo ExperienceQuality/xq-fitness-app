@@ -29,13 +29,15 @@ struct FitnessRootView: View {
         .sheet(item: $router.sheet) { destination in
             switch destination {
             case .createRoutine:
-                RoutineEditorView(store: store)
+                RoutineEditorView(model: RoutineEditorModel(store: store))
             case let .exercise(routineID, dayID, exerciseID):
                 ExerciseEditorView(
-                    store: store,
-                    routineID: routineID,
-                    dayID: dayID,
-                    exerciseID: exerciseID
+                    model: ExerciseEditorModel(
+                        store: store,
+                        routineID: routineID,
+                        dayID: dayID,
+                        exerciseID: exerciseID
+                    )
                 )
             }
         }
@@ -99,9 +101,11 @@ private struct RoutineListView: View {
 
 private struct RoutineEditorView: View {
     @Environment(\.dismiss) private var dismiss
+    @State private var model: RoutineEditorModel
 
-    let store: FitnessStore
-    @State private var model = RoutineEditorModel()
+    init(model: RoutineEditorModel) {
+        _model = State(initialValue: model)
+    }
 
     var body: some View {
         @Bindable var model = model
@@ -141,7 +145,7 @@ private struct RoutineEditorView: View {
 
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        if model.save(to: store) {
+                        if model.save() {
                             dismiss()
                         }
                     }

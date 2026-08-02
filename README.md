@@ -9,7 +9,8 @@ regenerate), iOS 17+.
 
 ## Architecture
 
-- SwiftUI with MVVM-style editor state and a router-owned `NavigationStack`.
+- SwiftUI MVVM for editors: parent-built `RoutineEditorModel` /
+  `ExerciseEditorModel`, Views bind only; router-owned `NavigationStack`.
 - `FitnessStore` owns domain mutations and observable snapshot state.
 - `FitnessPersisting` is the storage seam; production uses atomic local JSON
   with recovery and host tests use an in-memory adapter.
