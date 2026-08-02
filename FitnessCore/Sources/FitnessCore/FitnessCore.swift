@@ -424,7 +424,10 @@ public final class RoutineEditorModel {
     public var notes: String
     public private(set) var validationMessage: String?
 
-    public init(name: String = "", notes: String = "") {
+    private let store: FitnessStore
+
+    public init(store: FitnessStore, name: String = "", notes: String = "") {
+        self.store = store
         self.name = name
         self.notes = notes
     }
@@ -434,7 +437,7 @@ public final class RoutineEditorModel {
     }
 
     @discardableResult
-    public func save(to store: FitnessStore, id: UUID = UUID()) -> Bool {
+    public func save(id: UUID = UUID()) -> Bool {
         do {
             try store.send(.createRoutine(id: id, name: name, notes: notes))
             validationMessage = nil
@@ -443,6 +446,124 @@ public final class RoutineEditorModel {
             validationMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             return false
         }
+    }
+}
+
+@Observable
+public final class ExerciseEditorModel {
+    public var name: String
+    public var sets: Int
+    public var reps: Int
+    public var weightKg: Double
+    public private(set) var validationMessage: String?
+
+    public let isEditing: Bool
+
+    private let store: FitnessStore
+    private let routineID: UUID
+    private let dayID: UUID
+    private let exerciseID: UUID?
+    private let isUnavailable: Bool
+
+    public init(
+        store: FitnessStore,
+        routineID: UUID,
+        dayID: UUID,
+        exerciseID: UUID? = nil
+    ) {
+        self.store = store
+        self.routineID = routineID
+        self.dayID = dayID
+        self.exerciseID = exerciseID
+        self.isEditing = exerciseID != nil
+
+        let routine = store.snapshot.routines.first { $0.id == routineID }
+        let day = routine?.days.first { $0.id == dayID }
+
+        if let exerciseID {
+            if let exercise = day?.exercises.first(where: { $0.id == exerciseID }) {
+                name = exercise.name
+                sets = exercise.sets
+                reps = exercise.reps
+                weightKg = exercise.weightKg
+                isUnavailable = false
+                validationMessage = nil
+            } else {
+                name = ""
+                sets = 3
+                reps = 10
+                weightKg = 0
+                isUnavailable = true
+                validationMessage = Self.message(for: day == nil
+                    ? (routine == nil ? .routineNotFound : .trainingDayNotFound)
+                    : .exerciseNotFound)
+            }
+        } else if routine == nil {
+            name = ""
+            sets = 3
+            reps = 10
+            weightKg = 0
+            isUnavailable = true
+            validationMessage = Self.message(for: .routineNotFound)
+        } else if day == nil {
+            name = ""
+            sets = 3
+            reps = 10
+            weightKg = 0
+            isUnavailable = true
+            validationMessage = Self.message(for: .trainingDayNotFound)
+        } else {
+            name = ""
+            sets = 3
+            reps = 10
+            weightKg = 0
+            isUnavailable = false
+            validationMessage = nil
+        }
+    }
+
+    public var canSave: Bool {
+        !isUnavailable && !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    @discardableResult
+    public func save(id: UUID = UUID()) -> Bool {
+        guard !isUnavailable else {
+            return false
+        }
+
+        do {
+            if let exerciseID {
+                try store.send(.updateExercise(
+                    routineID: routineID,
+                    dayID: dayID,
+                    exerciseID: exerciseID,
+                    name: name,
+                    sets: sets,
+                    reps: reps,
+                    weightKg: weightKg
+                ))
+            } else {
+                try store.send(.addExercise(
+                    routineID: routineID,
+                    dayID: dayID,
+                    id: id,
+                    name: name,
+                    sets: sets,
+                    reps: reps,
+                    weightKg: weightKg
+                ))
+            }
+            validationMessage = nil
+            return true
+        } catch {
+            validationMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            return false
+        }
+    }
+
+    private static func message(for error: FitnessStoreError) -> String {
+        error.errorDescription ?? error.localizedDescription
     }
 }
 

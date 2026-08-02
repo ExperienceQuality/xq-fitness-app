@@ -3,39 +3,15 @@ import SwiftUI
 
 struct ExerciseEditorView: View {
     @Environment(\.dismiss) private var dismiss
+    @State private var model: ExerciseEditorModel
 
-    let store: FitnessStore
-    let routineID: UUID
-    let dayID: UUID
-    let exerciseID: UUID?
-
-    @State private var name: String
-    @State private var sets: Int
-    @State private var reps: Int
-    @State private var weightKg: Double
-    @State private var errorMessage: String?
-
-    init(store: FitnessStore, routineID: UUID, dayID: UUID, exerciseID: UUID?) {
-        self.store = store
-        self.routineID = routineID
-        self.dayID = dayID
-        self.exerciseID = exerciseID
-
-        let exercise = store.snapshot.routines
-            .first(where: { $0.id == routineID })?
-            .days.first(where: { $0.id == dayID })?
-            .exercises.first(where: { $0.id == exerciseID })
-        _name = State(initialValue: exercise?.name ?? "")
-        _sets = State(initialValue: exercise?.sets ?? 3)
-        _reps = State(initialValue: exercise?.reps ?? 10)
-        _weightKg = State(initialValue: exercise?.weightKg ?? 0)
-    }
-
-    private var canSave: Bool {
-        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    init(model: ExerciseEditorModel) {
+        _model = State(initialValue: model)
     }
 
     var body: some View {
+        @Bindable var model = model
+
         NavigationStack {
             Form {
                 Section("Exercise") {
@@ -44,7 +20,7 @@ struct ExerciseEditorView: View {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .accessibilityIdentifier(FitnessAccessibility.exerciseNameLabel)
-                        TextField("e.g. Bench Press", text: $name)
+                        TextField("e.g. Bench Press", text: $model.name)
                             .textInputAutocapitalization(.words)
                             .accessibilityLabel("Exercise name")
                             .accessibilityIdentifier(FitnessAccessibility.exerciseNameField)
@@ -55,7 +31,7 @@ struct ExerciseEditorView: View {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .accessibilityIdentifier(FitnessAccessibility.exerciseSetsLabel)
-                        TextField("Number of sets", value: $sets, format: .number)
+                        TextField("Number of sets", value: $model.sets, format: .number)
                             .keyboardType(.numberPad)
                             .accessibilityLabel("Sets")
                             .accessibilityIdentifier(FitnessAccessibility.exerciseSetsField)
@@ -66,7 +42,7 @@ struct ExerciseEditorView: View {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .accessibilityIdentifier(FitnessAccessibility.exerciseRepsLabel)
-                        TextField("Repetitions per set", value: $reps, format: .number)
+                        TextField("Repetitions per set", value: $model.reps, format: .number)
                             .keyboardType(.numberPad)
                             .accessibilityLabel("Repetitions")
                             .accessibilityIdentifier(FitnessAccessibility.exerciseRepsField)
@@ -77,17 +53,18 @@ struct ExerciseEditorView: View {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .accessibilityIdentifier(FitnessAccessibility.exerciseWeightLabel)
-                        TextField("Weight in kilograms", value: $weightKg, format: .number)
+                        TextField("Weight in kilograms", value: $model.weightKg, format: .number)
                             .keyboardType(.decimalPad)
                             .accessibilityLabel("Weight (kg)")
                             .accessibilityIdentifier(FitnessAccessibility.exerciseWeightField)
                     }
                 }
 
-                if let errorMessage {
+                if let validationMessage = model.validationMessage {
                     Section {
-                        Text(errorMessage)
+                        Text(validationMessage)
                             .foregroundStyle(.red)
+                            .accessibilityIdentifier(FitnessAccessibility.editorError)
                     }
                 }
 
@@ -97,47 +74,22 @@ struct ExerciseEditorView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle(exerciseID == nil ? "Add Exercise" : "Edit Exercise")
+            .navigationTitle(model.isEditing ? "Edit Exercise" : "Add Exercise")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
-                        .disabled(!canSave)
-                        .accessibilityIdentifier(FitnessAccessibility.exerciseSaveButton)
+                    Button("Save") {
+                        if model.save() {
+                            dismiss()
+                        }
+                    }
+                    .disabled(!model.canSave)
+                    .accessibilityIdentifier(FitnessAccessibility.exerciseSaveButton)
                 }
             }
-        }
-    }
-
-    private func save() {
-        do {
-            if let exerciseID {
-                try store.send(.updateExercise(
-                    routineID: routineID,
-                    dayID: dayID,
-                    exerciseID: exerciseID,
-                    name: name,
-                    sets: sets,
-                    reps: reps,
-                    weightKg: weightKg
-                ))
-            } else {
-                try store.send(.addExercise(
-                    routineID: routineID,
-                    dayID: dayID,
-                    id: UUID(),
-                    name: name,
-                    sets: sets,
-                    reps: reps,
-                    weightKg: weightKg
-                ))
-            }
-            dismiss()
-        } catch {
-            errorMessage = error.localizedDescription
         }
     }
 }
