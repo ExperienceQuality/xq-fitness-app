@@ -48,4 +48,6 @@ IOS_PROVISIONING_DEVICE_ID=<hardware-udid> \
 
 Requires a trusted iPhone and valid Apple Development signing. Override the
 device with `IOS_DEVICE_ID`, or let `scripts/plugged-iphone-udid.sh` detect the
-plugged-in phone for UI tests.
+plugged-in phone (defaults to `iPhone Air` when multiple are connected). Device
+installs prune stale `.xctrunner` apps first to avoid the free-profile
+three-app limit.

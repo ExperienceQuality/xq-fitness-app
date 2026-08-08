@@ -62,8 +62,8 @@
 		B5A82462DE429AC8FE5DFA45 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C02A9CE752D512A645BB5890 /* XQFitnessApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XQFitnessApp.swift; sourceTree = "<group>"; };
 		C79A742E947A5B910BD52B24 /* SnapshotMaintainedProgressTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotMaintainedProgressTests.swift; sourceTree = "<group>"; };
-		E32931AAAD0A588926EA82A9 /* ios-xq-fitness-appUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = "ios-xq-fitness-appUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
-		E36F2D3B50BF1D325DE8BDA2 /* FitnessCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = FitnessCore; path = FitnessCore; sourceTree = SOURCE_ROOT; };
+		E32931AAAD0A588926EA82A9 /* ios-xq-fitness-appUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "ios-xq-fitness-appUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		E36F2D3B50BF1D325DE8BDA2 /* FitnessCore */ = {isa = PBXFileReference; lastKnownFileType = folder; path = FitnessCore; sourceTree = SOURCE_ROOT; };
 		FDF07CC7404BA8104814AA15 /* TestApplication.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestApplication.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -448,6 +448,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				DEVELOPMENT_TEAM = T99X93V7Y2;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -466,6 +467,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				DEVELOPMENT_TEAM = T99X93V7Y2;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

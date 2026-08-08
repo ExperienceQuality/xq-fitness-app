@@ -3,6 +3,9 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [[ -z "${IOS_DEVICE_ID:-}" ]]; then
+  export IOS_DEVICE_MODEL="${IOS_DEVICE_MODEL:-iPhone Air}"
+fi
 DEVICE_ID="${IOS_DEVICE_ID:-$("${ROOT}/scripts/plugged-iphone-udid.sh")}"
 TEAM_ID="${DEVELOPMENT_TEAM:-T99X93V7Y2}"
 RESULT_DIRECTORY="${ROOT}/build/ui-test-results"
@@ -11,6 +14,8 @@ RESULT_BUNDLE="${RESULT_DIRECTORY}/fitness-ui-tests-device-$(date +%Y%m%d-%H%M%S
 echo "Physical-device UI path. Supported path is scripts/run-ui-tests.sh" >&2
 echo "Using plugged-in iPhone: ${DEVICE_ID}"
 echo "Using DEVELOPMENT_TEAM: ${TEAM_ID}"
+
+"${ROOT}/scripts/prune-device-xctrunners.sh" "${DEVICE_ID}"
 
 mkdir -p "${RESULT_DIRECTORY}"
 

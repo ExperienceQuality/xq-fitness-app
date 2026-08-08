@@ -49,5 +49,7 @@ IOS_PROVISIONING_DEVICE_ID=<hardware-udid> \
 ```
 
 `DEVELOPMENT_TEAM` defaults to `T99X93V7Y2`. `IOS_DEVICE_ID` defaults to the
-plugged-in iPhone detected by `scripts/plugged-iphone-udid.sh`. Use
-`INSTALL_TO_DEVICE=0` to export only.
+plugged-in iPhone detected by `scripts/plugged-iphone-udid.sh` (prefers
+`iPhone Air` when multiple phones are connected). Override with
+`IOS_DEVICE_NAME` or `IOS_DEVICE_MODEL`. Use `INSTALL_TO_DEVICE=0` to export
+only.
