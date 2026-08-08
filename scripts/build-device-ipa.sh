@@ -8,6 +8,9 @@ CONFIGURATION="${IOS_CONFIGURATION:-Release}"
 BUNDLE_ID="com.xq.fitness.ios-xq-fitness-app"
 # Prefer IOS_DEVICE_ID; otherwise detect the plugged-in iPhone. Never hard-code
 # a personal hardware UDID in the repo.
+if [[ -z "${IOS_DEVICE_ID:-}" ]]; then
+  export IOS_DEVICE_NAME="${IOS_DEVICE_NAME:-David}"
+fi
 DEVICE_ID="${IOS_DEVICE_ID:-$("${ROOT}/scripts/plugged-iphone-udid.sh")}"
 PROVISIONING_DEVICE_ID="${IOS_PROVISIONING_DEVICE_ID:-${DEVICE_ID}}"
 INSTALL_TO_DEVICE="${INSTALL_TO_DEVICE:-1}"
@@ -38,7 +41,9 @@ Signing:
   DEVELOPMENT_TEAM=<Apple team ID> when needed.
 
 Optional:
-  IOS_DEVICE_ID=<device ID>  Default: plugged-in iPhone via plugged-iphone-udid.sh
+  IOS_DEVICE_ID=<hardware UDID>  Default: plugged-in iPhone via plugged-iphone-udid.sh
+  IOS_DEVICE_NAME=<substring>  Default: David (iPhone Air) when IOS_DEVICE_ID is unset
+  IOS_DEVICE_MODEL=<substring>  Alternative disambiguator when multiple iPhones are connected
   IOS_PROVISIONING_DEVICE_ID=<hardware UDID>  Default: IOS_DEVICE_ID
   INSTALL_TO_DEVICE=0        Build/export only
   LAUNCH_ON_DEVICE=0         Install without launching
@@ -138,6 +143,8 @@ fi
 log "IPA ready: ${IPA_PATH}"
 
 if [[ "${INSTALL_TO_DEVICE}" == "1" ]]; then
+  "${ROOT}/scripts/prune-device-xctrunners.sh" "${DEVICE_ID}"
+
   unzip -q "${IPA_PATH}" -d "${STAGING_PATH}"
   APP_PATH="$(find "${STAGING_PATH}/Payload" -maxdepth 1 -type d -name '*.app' -print -quit)"
   log "Installing on ${DEVICE_ID}"
