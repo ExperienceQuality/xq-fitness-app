@@ -9,7 +9,7 @@ BUNDLE_ID="com.xq.fitness.ios-xq-fitness-app"
 # Prefer IOS_DEVICE_ID; otherwise detect the plugged-in iPhone. Never hard-code
 # a personal hardware UDID in the repo.
 if [[ -z "${IOS_DEVICE_ID:-}" ]]; then
-  export IOS_DEVICE_MODEL="${IOS_DEVICE_MODEL:-iPhone Air}"
+  export IOS_DEVICE_NAME="${IOS_DEVICE_NAME:-David}"
 fi
 DEVICE_ID="${IOS_DEVICE_ID:-$("${ROOT}/scripts/plugged-iphone-udid.sh")}"
 PROVISIONING_DEVICE_ID="${IOS_PROVISIONING_DEVICE_ID:-${DEVICE_ID}}"
@@ -42,8 +42,8 @@ Signing:
 
 Optional:
   IOS_DEVICE_ID=<hardware UDID>  Default: plugged-in iPhone via plugged-iphone-udid.sh
-  IOS_DEVICE_NAME=<substring>  Disambiguate when multiple iPhones are connected
-  IOS_DEVICE_MODEL=<substring> Default: iPhone Air when IOS_DEVICE_ID is unset
+  IOS_DEVICE_NAME=<substring>  Default: David (iPhone Air) when IOS_DEVICE_ID is unset
+  IOS_DEVICE_MODEL=<substring>  Alternative disambiguator when multiple iPhones are connected
   IOS_PROVISIONING_DEVICE_ID=<hardware UDID>  Default: IOS_DEVICE_ID
   INSTALL_TO_DEVICE=0        Build/export only
   LAUNCH_ON_DEVICE=0         Install without launching
