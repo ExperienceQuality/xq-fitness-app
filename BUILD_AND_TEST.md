@@ -10,6 +10,8 @@ Native SwiftUI iPhone app with **unit** tests in host-testable `FitnessCore` and
 - UI scheme: `ios-xq-fitness-app-ui-tests` → `ios-xq-fitness-appUITests`
 - App bundle ID: `com.xq.fitness.ios-xq-fitness-app`
 - UI-test bundle ID: `com.xq.fitness.ios-xq-fitness-appUITests`
+- Shared UI-test harness: `XQXCUITestSupport` `0.0.1`, linked only to the UI-test target
+- XcodeGen: `2.45.4` (regenerate with `xcodegen generate`)
 
 ## Unit
 

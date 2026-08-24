@@ -1,5 +1,7 @@
 import XCTest
 
+import XQXCUITestSupport
+
 enum TestApplication {
     static let descriptor = ApplicationDescriptor(
         bundleIdentifier: "com.xq.fitness.ios-xq-fitness-app",
@@ -10,8 +12,20 @@ enum TestApplication {
     )
 }
 
+extension BaseUITestCase {
+    /// Keeps the fitness suite's named evidence calls while diagnostics are
+    /// supplied by the shared package.
+    func captureScreenshot(named name: String) {
+        attachDiagnostics(named: name)
+    }
+}
+
 @MainActor
 class FitnessUITestCase: BaseUITestCase {
+    override class var applicationDescriptor: ApplicationDescriptor {
+        TestApplication.descriptor
+    }
+
     var fitnessApp: XCUIApplication {
         guard let application else {
             preconditionFailure("Fitness UI tests must launch through shared setUp")
@@ -19,22 +33,18 @@ class FitnessUITestCase: BaseUITestCase {
         return application
     }
 
-    override func setUp() {
-        super.setUp()
-        continueAfterFailure = false
-
-        let app = launchApplication(TestApplication.descriptor, reset: true)
+    override func verifyInitialState(in app: XCUIApplication) {
         RoutineListScreen(application: app).emptyState.requireExistence()
     }
 
     @discardableResult
     func relaunchPreservingTestData() -> XCUIApplication {
-        relaunchApplication(TestApplication.descriptor)
+        relaunchApplication(reset: false)
     }
 
     @discardableResult
     func resetToCleanState() -> XCUIApplication {
-        let app = relaunchApplication(TestApplication.descriptor, reset: true)
+        let app = relaunchApplication(reset: true)
         RoutineListScreen(application: app).emptyState.requireExistence()
         return app
     }

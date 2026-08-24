@@ -11,6 +11,9 @@ settings:
 packages:
   FitnessCore:
     path: FitnessCore
+  XQXCUITestSupport:
+    url: https://github.com/ExperienceQuality/xq-xcuitest-support.git
+    from: 0.0.1
 targets:
   ios-xq-fitness-app:
     type: application
@@ -41,6 +44,7 @@ targets:
       - App/FitnessAccessibility.swift
     dependencies:
       - target: ios-xq-fitness-app
+      - package: XQXCUITestSupport
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.xq.fitness.ios-xq-fitness-appUITests
