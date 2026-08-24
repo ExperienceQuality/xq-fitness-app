@@ -39,12 +39,12 @@ class FitnessUITestCase: BaseUITestCase {
 
     @discardableResult
     func relaunchPreservingTestData() -> XCUIApplication {
-        relaunchApplication(reset: false)
+        relaunchApplication(TestApplication.descriptor, reset: false)
     }
 
     @discardableResult
     func resetToCleanState() -> XCUIApplication {
-        let app = relaunchApplication(reset: true)
+        let app = relaunchApplication(TestApplication.descriptor, reset: true)
         RoutineListScreen(application: app).emptyState.requireExistence()
         return app
     }
