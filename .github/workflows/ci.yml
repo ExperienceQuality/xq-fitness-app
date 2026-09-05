@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core-tests:
+    name: Core tests
+    runs-on: macos-15
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode 16.4
+        run: sudo xcode-select --switch /Applications/Xcode_16.4.app
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Run core tests
+        run: swift test --package-path FitnessCore
+
+  ios-ui-tests:
+    name: iOS UI tests
+    runs-on: macos-15
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode 16.4
+        run: sudo xcode-select --switch /Applications/Xcode_16.4.app
+
+      - name: Validate test environment
+        run: |
+          xcodebuild -version
+          xcrun simctl list devices available
+
+      - name: Cache Swift package sources
+        uses: actions/cache@v4
+        with:
+          path: build/SourcePackages
+          key: spm-${{ runner.os }}-xcode-16.4-${{ hashFiles('ios-xq-fitness-app.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+
+      - name: Resolve Swift packages
+        run: |
+          xcodebuild \
+            -resolvePackageDependencies \
+            -project ios-xq-fitness-app.xcodeproj \
+            -scheme ios-xq-fitness-app-ui-tests \
+            -clonedSourcePackagesDirPath build/SourcePackages
+
+      - name: Verify resolved package pins
+        run: git diff --exit-code -- ios-xq-fitness-app.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+
+      - name: Run UI tests
+        run: |
+          mkdir -p build/results
+          xcodebuild \
+            -project ios-xq-fitness-app.xcodeproj \
+            -scheme ios-xq-fitness-app-ui-tests \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.5' \
+            -derivedDataPath build/DerivedData \
+            -clonedSourcePackagesDirPath build/SourcePackages \
+            -disableAutomaticPackageResolution \
+            -resultBundlePath build/results/ui-tests.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            test
+
+      - name: Upload UI test result
+        if: ${{ failure() || cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-tests-xcresult
+          path: build/results/ui-tests.xcresult
+          if-no-files-found: ignore
+          retention-days: 7

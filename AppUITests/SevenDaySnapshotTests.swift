@@ -1,4 +1,5 @@
 import XCTest
+import XQXCUITestSupport
 
 @MainActor
 final class SevenDaySnapshotTests: FitnessUITestCase {
@@ -28,7 +29,6 @@ final class SevenDaySnapshotTests: FitnessUITestCase {
         report.root.requireExistence()
         report.exercise(named: "Bench Press").requireExistence()
         report.progress("first").requireExistence()
-        captureScreenshot(named: "First seven-day routine snapshot")
 
         workspace = report.backToWorkspace()
         day = workspace.openDay(1)
@@ -39,7 +39,6 @@ final class SevenDaySnapshotTests: FitnessUITestCase {
         report = workspace.createSnapshot()
         report.root.requireExistence()
         report.progress("increased").requireExistence()
-        captureScreenshot(named: "Exercise progress compared with previous snapshot")
 
         workspace = report.backToWorkspace()
         day = workspace.openDay(1)
@@ -49,7 +48,6 @@ final class SevenDaySnapshotTests: FitnessUITestCase {
         report = workspace.createSnapshot()
         report.root.requireExistence()
         report.progress("decreased").requireExistence()
-        captureScreenshot(named: "Third snapshot compares with second snapshot")
 
         app = relaunchPreservingTestData()
         routines = RoutineListScreen(application: app)
@@ -58,7 +56,6 @@ final class SevenDaySnapshotTests: FitnessUITestCase {
         workspace.root.requireExistence()
         report = workspace.openLatestComparison()
         report.progress("decreased").requireExistence()
-        captureScreenshot(named: "Retained comparison after relaunch")
     }
 
     func testExerciseCanBeDeletedFromTrainingDay() {
@@ -75,7 +72,6 @@ final class SevenDaySnapshotTests: FitnessUITestCase {
 
         day.emptyState.requireExistence()
         XCTAssertFalse(day.exercise(named: "Temporary Press").exists)
-        captureScreenshot(named: "Exercise deleted from training day")
     }
 
     func testExerciseEditorShowsEveryInputLabel() {
@@ -100,6 +96,5 @@ final class SevenDaySnapshotTests: FitnessUITestCase {
         XCTAssertEqual(editor.setsField.label, "Sets")
         XCTAssertEqual(editor.repsField.label, "Repetitions")
         XCTAssertEqual(editor.weightField.label, "Weight (kg)")
-        captureScreenshot(named: "Exercise editor input labels")
     }
 }

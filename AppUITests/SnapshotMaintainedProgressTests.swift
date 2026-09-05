@@ -1,4 +1,5 @@
 import XCTest
+import XQXCUITestSupport
 
 @MainActor
 final class SnapshotMaintainedProgressTests: FitnessUITestCase {
@@ -20,6 +21,5 @@ final class SnapshotMaintainedProgressTests: FitnessUITestCase {
         report = workspace.createSnapshot()
         report.root.requireExistence()
         report.progress("maintained").requireExistence()
-        captureScreenshot(named: "Maintained progress on unchanged exercise")
     }
 }

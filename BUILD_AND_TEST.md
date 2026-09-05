@@ -37,6 +37,45 @@ retains a timestamped XCResult beneath `build/ui-test-results/`. Shared
 `FitnessUITestCase` setup performs that reset and requires the empty routine
 state before every test body.
 
+## Continuous integration
+
+GitHub Actions runs for pull requests, pushes to `main`, and manual dispatches.
+Both jobs use `macos-15` with Xcode 16.4:
+
+- **Core tests** runs the `FitnessCore` SwiftPM tests.
+- **iOS UI tests** runs the UI-test scheme on iPhone 16 with iOS 18.5.
+
+CI disables code signing and needs no signing credentials or repository
+secrets. A failed or cancelled iOS UI-test run uploads its XCResult for
+diagnosis.
+
+To reproduce both jobs locally with the same Xcode and simulator:
+
+```bash
+export DEVELOPER_DIR=/Applications/Xcode_16.4.app/Contents/Developer
+
+swift test --package-path FitnessCore
+
+mkdir -p build/results
+
+xcodebuild \
+  -project ios-xq-fitness-app.xcodeproj \
+  -clonedSourcePackagesDirPath build/SourcePackages \
+  -resolvePackageDependencies
+
+xcodebuild \
+  -project ios-xq-fitness-app.xcodeproj \
+  -scheme ios-xq-fitness-app-ui-tests \
+  -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.5' \
+  -derivedDataPath build/DerivedData \
+  -clonedSourcePackagesDirPath build/SourcePackages \
+  -disableAutomaticPackageResolution \
+  -resultBundlePath build/results/ui-tests.xcresult \
+  CODE_SIGNING_ALLOWED=NO \
+  CODE_SIGNING_REQUIRED=NO \
+  test
+```
+
 ## Physical device (optional)
 
 ```bash

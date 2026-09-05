@@ -24,6 +24,7 @@ playground.xcworkspace
 .swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
 .swiftpm/xcode/xcuserdata/
 Package.resolved
+!ios-xq-fitness-app.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 
 # Secrets / credentials / signing material
 .env
