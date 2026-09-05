@@ -1,4 +1,5 @@
 import XCTest
+import XQXCUITestSupport
 
 @MainActor
 final class RoutineListTests: FitnessUITestCase {
@@ -16,7 +17,6 @@ final class RoutineListTests: FitnessUITestCase {
         routines.routine(named: "Morning Mobility").requireExistence()
         routines.routine(named: "Evening Strength").requireExistence()
         routines.notes("Short and focused").requireExistence()
-        captureScreenshot(named: "Two locally saved routines")
     }
 
     func testResetClearsPreviouslyPersistedUITestRoutines() {
@@ -29,6 +29,5 @@ final class RoutineListTests: FitnessUITestCase {
         routines = RoutineListScreen(application: app)
         routines.emptyState.requireExistence()
         XCTAssertFalse(routines.routine(named: "Temporary Routine").exists)
-        captureScreenshot(named: "Isolated routine storage after reset")
     }
 }

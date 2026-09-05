@@ -1,4 +1,5 @@
 import XCTest
+import XQXCUITestSupport
 
 @MainActor
 final class ExerciseEditorValidationTests: FitnessUITestCase {
@@ -19,6 +20,5 @@ final class ExerciseEditorValidationTests: FitnessUITestCase {
 
         editor.cancel()
         day.emptyState.requireExistence()
-        captureScreenshot(named: "Exercise editor cancel keeps day empty")
     }
 }

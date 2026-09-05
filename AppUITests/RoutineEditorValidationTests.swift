@@ -1,4 +1,5 @@
 import XCTest
+import XQXCUITestSupport
 
 @MainActor
 final class RoutineEditorValidationTests: FitnessUITestCase {
@@ -15,6 +16,5 @@ final class RoutineEditorValidationTests: FitnessUITestCase {
 
         editor.cancel()
         routines.emptyState.requireExistence()
-        captureScreenshot(named: "Validation cancel keeps routines empty")
     }
 }

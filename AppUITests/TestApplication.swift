@@ -1,4 +1,5 @@
 import XCTest
+import XQXCUITestSupport
 
 enum TestApplication {
     static let descriptor = ApplicationDescriptor(
@@ -12,6 +13,10 @@ enum TestApplication {
 
 @MainActor
 class FitnessUITestCase: BaseUITestCase {
+    override class var applicationDescriptor: ApplicationDescriptor {
+        TestApplication.descriptor
+    }
+
     var fitnessApp: XCUIApplication {
         guard let application else {
             preconditionFailure("Fitness UI tests must launch through shared setUp")
@@ -19,17 +24,13 @@ class FitnessUITestCase: BaseUITestCase {
         return application
     }
 
-    override func setUp() {
-        super.setUp()
-        continueAfterFailure = false
-
-        let app = launchApplication(TestApplication.descriptor, reset: true)
-        RoutineListScreen(application: app).emptyState.requireExistence()
+    override func verifyInitialState(in application: XCUIApplication) {
+        RoutineListScreen(application: application).emptyState.requireExistence()
     }
 
     @discardableResult
     func relaunchPreservingTestData() -> XCUIApplication {
-        relaunchApplication(TestApplication.descriptor)
+        relaunchApplication(TestApplication.descriptor, reset: false)
     }
 
     @discardableResult

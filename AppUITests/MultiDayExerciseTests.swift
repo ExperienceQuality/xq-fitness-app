@@ -1,4 +1,5 @@
 import XCTest
+import XQXCUITestSupport
 
 @MainActor
 final class MultiDayExerciseTests: FitnessUITestCase {
@@ -23,7 +24,6 @@ final class MultiDayExerciseTests: FitnessUITestCase {
         monday = workspace.openDay(1)
         monday.exercise(named: "Monday Squats").requireExistence()
         XCTAssertFalse(monday.exercise(named: "Wednesday Rows").exists)
-        captureScreenshot(named: "Exercises isolated per training day")
     }
 
     func testUpdatingSetsPersistsOnTrainingDay() {
@@ -36,6 +36,5 @@ final class MultiDayExerciseTests: FitnessUITestCase {
         day.openAddExercise().save(name: "Deadlift")
         day.openExercise(named: "Deadlift").update(sets: "5")
         day.exercise(named: "Deadlift").requireExistence()
-        captureScreenshot(named: "Exercise sets updated")
     }
 }
