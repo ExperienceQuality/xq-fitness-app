@@ -164,11 +164,10 @@ final class FitnessStoreTests: XCTestCase {
         XCTAssertEqual(persistence.savedSnapshots.count, savesBeforeInvalidCommand)
     }
 
-    func testSnapshotsAreImmutableAggregateDuplicateExercisesAndCompareToPrevious() throws {
+    func testSnapshotsAreImmutableAndCompareToPrevious() throws {
         let store = try FitnessStore(persistence: InMemoryFitnessPersistence())
         let routineID = UUID()
         let firstBenchID = UUID()
-        let secondBenchID = UUID()
         try store.send(.createRoutine(id: routineID, name: "Strength", notes: ""))
         let days = try XCTUnwrap(store.snapshot.routines.first?.days)
 
@@ -181,15 +180,6 @@ final class FitnessStoreTests: XCTestCase {
             reps: 30,
             weightKg: 80
         ))
-        try store.send(.addExercise(
-            routineID: routineID,
-            dayID: days[1].id,
-            id: secondBenchID,
-            name: "bench press",
-            sets: 4,
-            reps: 25,
-            weightKg: 85
-        ))
         try store.send(.createSnapshot(
             routineID: routineID,
             id: UUID(),
@@ -199,9 +189,9 @@ final class FitnessStoreTests: XCTestCase {
         var report = try store.snapshotReport(routineID: routineID)
         XCTAssertNil(report.previous)
         XCTAssertEqual(report.exercises.count, 1)
-        XCTAssertEqual(report.exercises.first?.current.sets, 4)
+        XCTAssertEqual(report.exercises.first?.current.sets, 3)
         XCTAssertEqual(report.exercises.first?.current.reps, 30)
-        XCTAssertEqual(report.exercises.first?.current.weightKg, 85)
+        XCTAssertEqual(report.exercises.first?.current.weightKg, 80)
         XCTAssertEqual(report.exercises.first?.reps, .first)
         XCTAssertEqual(report.exercises.first?.weight, .first)
 
@@ -235,15 +225,6 @@ final class FitnessStoreTests: XCTestCase {
             reps: 35,
             weightKg: 70
         ))
-        try store.send(.updateExercise(
-            routineID: routineID,
-            dayID: days[1].id,
-            exerciseID: secondBenchID,
-            name: "Bench Press",
-            sets: 4,
-            reps: 25,
-            weightKg: 75
-        ))
         try store.send(.createSnapshot(
             routineID: routineID,
             id: UUID(),
@@ -253,6 +234,62 @@ final class FitnessStoreTests: XCTestCase {
         report = try store.snapshotReport(routineID: routineID)
         XCTAssertEqual(report.exercises.first?.reps, .maintained)
         XCTAssertEqual(report.exercises.first?.weight, .decreased)
+    }
+
+    func testLaterTrainingDayRecordReplacesEarlierRecordForSameExercise() throws {
+        let store = try FitnessStore(persistence: InMemoryFitnessPersistence())
+        let routineID = UUID()
+        try store.send(.createRoutine(id: routineID, name: "Strength", notes: ""))
+        let days = try XCTUnwrap(store.snapshot.routines.first?.days)
+        try store.send(.addExercise(
+            routineID: routineID,
+            dayID: days[0].id,
+            id: UUID(),
+            name: "Bench Press",
+            sets: 3,
+            reps: 8,
+            weightKg: 60
+        ))
+
+        try store.send(.addExercise(
+            routineID: routineID,
+            dayID: days[1].id,
+            id: UUID(),
+            name: "  bench press ",
+            sets: 4,
+            reps: 10,
+            weightKg: 65
+        ))
+
+        let progress = try store.exerciseProgress(routineID: routineID)
+        XCTAssertEqual(progress.count, 1)
+        XCTAssertEqual(progress.first?.current.name, "bench press")
+        XCTAssertEqual(progress.first?.current.sets, 4)
+        XCTAssertEqual(progress.first?.current.reps, 10)
+        XCTAssertEqual(progress.first?.current.weightKg, 65)
+    }
+
+    func testExerciseProgressUsesFirstRecordBeforeSnapshots() throws {
+        let store = try FitnessStore(persistence: InMemoryFitnessPersistence())
+        let routineID = UUID()
+        try store.send(.createRoutine(id: routineID, name: "Progress", notes: ""))
+        let dayID = try XCTUnwrap(store.snapshot.routines.first?.days.first?.id)
+        try store.send(.addExercise(
+            routineID: routineID,
+            dayID: dayID,
+            id: UUID(),
+            name: "Squat",
+            sets: 4,
+            reps: 8,
+            weightKg: 80
+        ))
+
+        let progress = try store.exerciseProgress(routineID: routineID)
+
+        XCTAssertEqual(progress.count, 1)
+        XCTAssertEqual(progress.first?.reps, .first)
+        XCTAssertEqual(progress.first?.weight, .first)
+        XCTAssertEqual(progress.first?.current.weightKg, 80)
     }
 
     func testCreatingThirdSnapshotRetainsOnlyNewestTwoCaptures() throws {

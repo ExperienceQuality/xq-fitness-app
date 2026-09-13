@@ -11,6 +11,8 @@ enum FitnessAccessibility {
     static let trainingDayScreen = "fitness.training-day.screen"
     static let addExerciseButton = "fitness.exercise.add"
     static let exerciseRow = "fitness.exercise.row"
+    static let emptyExerciseList = "fitness.exercises.empty"
+    static let exerciseProgressRow = "fitness.exercises.progress-row"
     static let exerciseNameLabel = "fitness.exercise-editor.name-label"
     static let exerciseSetsLabel = "fitness.exercise-editor.sets-label"
     static let exerciseRepsLabel = "fitness.exercise-editor.reps-label"

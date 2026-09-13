@@ -8,23 +8,35 @@ struct FitnessRootView: View {
     var body: some View {
         @Bindable var router = router
 
-        NavigationStack(path: $router.path) {
-            RoutineListView(store: store, router: router)
-                .navigationDestination(for: AppRoute.self) { route in
-                    switch route {
-                    case .routine(let routineID):
-                        RoutineWorkspaceView(store: store, router: router, routineID: routineID)
-                    case let .trainingDay(routineID, dayID):
-                        TrainingDayView(
-                            store: store,
-                            router: router,
-                            routineID: routineID,
-                            dayID: dayID
-                        )
-                    case .snapshotReport(let routineID):
-                        SnapshotReportView(store: store, routineID: routineID)
+        TabView {
+            NavigationStack(path: $router.path) {
+                RoutineListView(store: store, router: router)
+                    .navigationDestination(for: AppRoute.self) { route in
+                        switch route {
+                        case .routine(let routineID):
+                            RoutineWorkspaceView(store: store, router: router, routineID: routineID)
+                        case let .trainingDay(routineID, dayID):
+                            TrainingDayView(
+                                store: store,
+                                router: router,
+                                routineID: routineID,
+                                dayID: dayID
+                            )
+                        case .snapshotReport(let routineID):
+                            SnapshotReportView(store: store, routineID: routineID)
+                        }
                     }
-                }
+            }
+            .tabItem {
+                Label("Routines", systemImage: "list.bullet.clipboard")
+            }
+
+            NavigationStack {
+                ExerciseListView(store: store)
+            }
+            .tabItem {
+                Label("Exercises", systemImage: "dumbbell")
+            }
         }
         .sheet(item: $router.sheet) { destination in
             switch destination {

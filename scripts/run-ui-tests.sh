@@ -15,6 +15,7 @@ xcodebuild \
   -project "${ROOT}/ios-xq-fitness-app.xcodeproj" \
   -scheme ios-xq-fitness-app-ui-tests \
   -destination "platform=iOS Simulator,name=${SIMULATOR_NAME}" \
+  -parallel-testing-enabled NO \
   -resultBundlePath "${RESULT_BUNDLE}" \
   test
 

@@ -372,6 +372,18 @@ public final class FitnessStore {
         return SnapshotReport(current: current, previous: previous, exercises: exercises)
     }
 
+    public func exerciseProgress(routineID: UUID) throws -> [ExerciseProgress] {
+        guard let routine = snapshot.routines.first(where: { $0.id == routineID }) else {
+            throw FitnessStoreError.routineNotFound
+        }
+        if !routine.snapshots.isEmpty {
+            return try snapshotReport(routineID: routineID).exercises
+        }
+        return Self.aggregateExercises(in: routine).map {
+            ExerciseProgress(current: $0, reps: .first, weight: .first)
+        }
+    }
+
     private static func exercise(
         id: UUID,
         name: String,
@@ -391,21 +403,12 @@ public final class FitnessStore {
         var byName: [String: ExerciseSnapshot] = [:]
         for exercise in routine.days.flatMap(\.exercises) {
             let key = exercise.name.normalizedKey
-            if let existing = byName[key] {
-                byName[key] = ExerciseSnapshot(
-                    name: existing.name,
-                    sets: max(existing.sets, exercise.sets),
-                    reps: max(existing.reps, exercise.reps),
-                    weightKg: max(existing.weightKg, exercise.weightKg)
-                )
-            } else {
-                byName[key] = ExerciseSnapshot(
-                    name: exercise.name,
-                    sets: exercise.sets,
-                    reps: exercise.reps,
-                    weightKg: exercise.weightKg
-                )
-            }
+            byName[key] = ExerciseSnapshot(
+                name: exercise.name,
+                sets: exercise.sets,
+                reps: exercise.reps,
+                weightKg: exercise.weightKg
+            )
         }
         return byName.values.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
