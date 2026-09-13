@@ -113,9 +113,18 @@ struct ExerciseEditorScreen: ScreenObject {
         application.buttons[FitnessAccessibility.exerciseSaveButton]
     }
 
-    func save(name: String? = nil) {
+    func save(name: String? = nil, sets: String? = nil, reps: String? = nil, weight: String? = nil) {
         if let name {
             nameField.replaceText(with: name)
+        }
+        if let sets {
+            setsField.replaceText(with: sets)
+        }
+        if let reps {
+            repsField.replaceText(with: reps)
+        }
+        if let weight {
+            weightField.replaceText(with: weight)
         }
         saveButton.tapWhenHittable()
     }
