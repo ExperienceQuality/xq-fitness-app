@@ -1,0 +1,12 @@
+# hub-stage: deploy
+name: Deploy
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  deploy:
+    if: ${{ false }}
+    runs-on: macos-15
+    steps:
+      - run: echo 'Deployment requires an explicitly configured protected environment.'

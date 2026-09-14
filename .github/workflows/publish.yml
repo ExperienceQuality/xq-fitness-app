@@ -1,0 +1,12 @@
+# hub-stage: publish
+name: Publish
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  publish:
+    if: ${{ false }}
+    runs-on: macos-15
+    steps:
+      - run: echo 'Publishing requires explicitly configured signing credentials.'

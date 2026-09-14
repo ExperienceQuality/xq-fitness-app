@@ -14,14 +14,20 @@ Native SwiftUI iPhone app with **unit** tests in host-testable `FitnessCore` and
 ## Unit
 
 ```bash
-xcodebuild \
-  -project ios-xq-fitness-app.xcodeproj \
-  -scheme ios-xq-fitness-app \
-  -destination 'generic/platform=iOS' \
-  CODE_SIGNING_ALLOWED=NO \
-  build
-swift test --package-path FitnessCore
+./scripts/run-unit-tests.sh
 ```
+
+The unit script runs the host-testable `FitnessCore` package and writes a
+timestamped log under `build/unit-test-results/`.
+
+## Build
+
+```bash
+./scripts/build.sh
+```
+
+The build is signing-free, uses deterministic derived data, and verifies the
+committed package resolution.
 
 ## UI (Simulator)
 
@@ -76,7 +82,7 @@ xcodebuild \
   test
 ```
 
-## Physical device (optional)
+## Physical device
 
 ```bash
 ./scripts/run-device-ui-tests.sh
@@ -85,8 +91,6 @@ IOS_PROVISIONING_DEVICE_ID=<hardware-udid> \
 ./scripts/build-device-ipa.sh
 ```
 
-Requires a trusted iPhone and valid Apple Development signing. Override the
-device with `IOS_DEVICE_ID`, or let `scripts/plugged-iphone-udid.sh` detect the
-plugged-in phone. Defaults: `iPhone` for `./scripts/run-device-ui-tests.sh`,
-`David` (iPhone Air) for `./scripts/build-device-ipa.sh`. Device installs prune
-stale `.xctrunner` apps first to avoid the free-profile three-app limit.
+Requires a trusted `IphoneTest` device and valid Apple Development signing.
+Override the device with `IOS_DEVICE_NAME` or `IOS_DEVICE_ID`. Device installs
+prune stale `.xctrunner` apps first to avoid the free-profile three-app limit.
