@@ -13,7 +13,7 @@ packages:
     path: FitnessCore
   XQXCUITestSupport:
     url: https://github.com/ExperienceQuality/xq-xcuitest-support.git
-    from: 0.1.0
+    version: 0.1.0
 targets:
   ios-xq-fitness-app:
     type: application

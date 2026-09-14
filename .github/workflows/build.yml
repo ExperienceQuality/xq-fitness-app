@@ -1,0 +1,23 @@
+# hub-stage: build
+name: Build
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo xcode-select --switch /Applications/Xcode_16.4.app
+      - run: ./scripts/build.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fitness-build-${{ github.sha }}
+          path: build/DerivedData/Build/Products
+          if-no-files-found: error

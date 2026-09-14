@@ -1,0 +1,41 @@
+# hub-stage: test
+name: Test
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  unit-tests:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo xcode-select --switch /Applications/Xcode_16.4.app
+      - run: ./scripts/run-unit-tests.sh
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fitness-unit-tests-${{ github.run_id }}
+          path: build/unit-test-results
+          if-no-files-found: ignore
+  ui-tests:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo xcode-select --switch /Applications/Xcode_16.4.app
+      - run: xcrun simctl list devices available
+      - run: ./scripts/run-ui-tests.sh
+        env:
+          IOS_SIMULATOR_NAME: iPhone 16
+          IOS_SIMULATOR_OS: 18.5
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fitness-ui-tests-${{ github.run_id }}
+          path: build/ui-test-results
+          if-no-files-found: ignore

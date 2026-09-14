@@ -19,15 +19,14 @@ regenerate), iOS 17+.
 ## Build and unit test
 
 ```bash
-xcodegen generate   # optional; regenerates the Xcode project from project.yml
-xcodebuild \
-  -project ios-xq-fitness-app.xcodeproj \
-  -scheme ios-xq-fitness-app \
-  -destination 'generic/platform=iOS' \
-  CODE_SIGNING_ALLOWED=NO \
-  build
-swift test --package-path FitnessCore
+./scripts/build.sh
+./scripts/run-unit-tests.sh
 ```
+
+Both commands resolve the committed Swift package pins and use deterministic
+build paths. Override destinations and paths with `IOS_BUILD_DESTINATION`,
+`IOS_TEST_DESTINATION`, `IOS_DERIVED_DATA_PATH`, or
+`IOS_SOURCE_PACKAGES_PATH`.
 
 ## UI tests (Simulator)
 
@@ -37,6 +36,14 @@ swift test --package-path FitnessCore
 
 Every UI test resets and verifies an isolated `XQFitnessUITests` store before
 its test body. Normal app data is never reset. See [BUILD_AND_TEST.md](BUILD_AND_TEST.md).
+
+Physical-device UI tests target the dedicated `IphoneTest` device by default:
+
+```bash
+./scripts/run-device-ui-tests.sh
+```
+
+Override device selection with `IOS_DEVICE_NAME` or `IOS_DEVICE_ID`.
 
 ## Build and deploy an IPA
 
