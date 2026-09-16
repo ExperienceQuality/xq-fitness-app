@@ -135,8 +135,9 @@ final class EditorModelTests: XCTestCase {
     private func seededExerciseStore() throws -> (FitnessStore, UUID, UUID, UUID) {
         let store = try FitnessStore(persistence: InMemoryFitnessPersistence())
         let routineID = UUID(uuidString: "0F2B8215-BB22-41AE-82B8-A6C81D1D657E")!
+        let dayID = UUID(uuidString: "AAAAAAAA-1111-2222-3333-BBBBBBBBBBBB")!
         try store.send(.createRoutine(id: routineID, name: "Strength", notes: ""))
-        let dayID = try XCTUnwrap(store.snapshot.routines.first?.days.first?.id)
+        try store.send(.addTrainingSession(routineID: routineID, id: dayID, name: "Push"))
         let exerciseID = UUID(uuidString: "99999999-8888-7777-6666-555555555555")!
         try store.send(.addExercise(
             routineID: routineID,

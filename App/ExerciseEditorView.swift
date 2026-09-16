@@ -63,13 +63,13 @@ struct ExerciseEditorView: View {
                 if let validationMessage = model.validationMessage {
                     Section {
                         Text(validationMessage)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(XQPalette.destructive)
                             .accessibilityIdentifier(FitnessAccessibility.editorError)
                     }
                 }
 
                 Section {
-                    Text("Snapshots compare the highest reps and weight recorded for exercises with the same name across the seven-day routine.")
+                    Text("Snapshots compare the highest reps and weight recorded for exercises with the same name across the routine.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }

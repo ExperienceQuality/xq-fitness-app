@@ -21,12 +21,12 @@ final class FitnessStoreTests: XCTestCase {
         try store.send(.createRoutine(
             id: routineID,
             name: "  Strength Reset  ",
-            notes: "  Three focused days.  "
+            notes: "  Three focused sessions.  "
         ))
 
         XCTAssertEqual(
             store.snapshot.routines,
-            [Routine(id: routineID, name: "Strength Reset", notes: "Three focused days.")]
+            [Routine(id: routineID, name: "Strength Reset", notes: "Three focused sessions.")]
         )
         XCTAssertEqual(persistence.savedSnapshots, [store.snapshot])
     }
@@ -62,21 +62,153 @@ final class FitnessStoreTests: XCTestCase {
         XCTAssertNil(store.snapshot.routines.first?.notes)
     }
 
-    func testEveryRoutineOwnsExactlySevenStableOrderedDays() throws {
+    func testCreateRoutineStartsWithNoTrainingSessions() throws {
         let routineID = UUID(uuidString: "6E91E8BB-54D7-42E4-8B11-6D55DCFC9020")!
         let store = try FitnessStore(persistence: InMemoryFitnessPersistence())
 
-        try store.send(.createRoutine(id: routineID, name: "Seven Day Plan", notes: ""))
+        try store.send(.createRoutine(id: routineID, name: "Open Plan", notes: ""))
 
-        let days = try XCTUnwrap(store.snapshot.routines.first?.days)
-        XCTAssertEqual(days.count, 7)
-        XCTAssertEqual(days.map(\.number), Array(1...7))
-        XCTAssertEqual(days.map(\.name), TrainingDay.weekdayNames)
-        XCTAssertEqual(Set(days.map(\.id)).count, 7)
-        XCTAssertEqual(days, Routine(id: routineID, name: "Seven Day Plan", notes: nil).days)
+        XCTAssertEqual(store.snapshot.routines.first?.days, [])
+        XCTAssertEqual(Routine(id: routineID, name: "Open Plan", notes: nil).days, [])
     }
 
-    func testLegacySchemaMigratesToSevenDaysAndCurrentVersion() throws {
+    func testRoutinePreservesProvidedTrainingSessions() throws {
+        let routineID = UUID(uuidString: "F4F7541F-2928-4F0C-A4EE-4A31640E0F45")!
+        let session = TrainingDay(
+            id: TrainingDay.stableID(routineID: routineID, number: 2),
+            number: 2,
+            name: "Pull Strength"
+        )
+
+        let routine = Routine(id: routineID, name: "Flexible Plan", notes: nil, days: [session])
+
+        XCTAssertEqual(routine.days, [session])
+    }
+
+    func testAddTrainingSessionAppendsNamedSessionWithoutSevenSessionLimit() throws {
+        let persistence = InMemoryFitnessPersistence()
+        let store = try FitnessStore(persistence: persistence)
+        let routineID = UUID(uuidString: "671C58D0-9878-4848-A47B-5299F85A7265")!
+        let sessionIDs = (1...8).map { _ in UUID() }
+        try store.send(.createRoutine(id: routineID, name: "Adjustable Plan", notes: ""))
+
+        for (index, sessionID) in sessionIDs.enumerated() {
+            try store.send(.addTrainingSession(
+                routineID: routineID,
+                id: sessionID,
+                name: "Session \(index + 1)"
+            ))
+        }
+
+        let sessions = try XCTUnwrap(store.snapshot.routines.first?.days)
+        XCTAssertEqual(sessions.count, 8)
+        XCTAssertEqual(sessions.map(\.id), sessionIDs)
+        XCTAssertEqual(sessions.map(\.number), Array(1...8))
+        XCTAssertEqual(sessions.last?.name, "Session 8")
+        XCTAssertEqual(persistence.savedSnapshots.count, 9)
+    }
+
+    func testRenameTrainingSessionTrimsNameAndKeepsExercises() throws {
+        let persistence = InMemoryFitnessPersistence()
+        let store = try FitnessStore(persistence: persistence)
+        let routineID = UUID()
+        let sessionID = UUID()
+        let exerciseID = UUID()
+        try store.send(.createRoutine(id: routineID, name: "Strength", notes: ""))
+        try store.send(.addTrainingSession(routineID: routineID, id: sessionID, name: "Push"))
+        try store.send(.addExercise(
+            routineID: routineID,
+            dayID: sessionID,
+            id: exerciseID,
+            name: "Bench Press",
+            sets: 3,
+            reps: 10,
+            weightKg: 80
+        ))
+
+        try store.send(.renameTrainingSession(
+            routineID: routineID,
+            sessionID: sessionID,
+            name: "  Push Strength  "
+        ))
+
+        let session = try XCTUnwrap(store.snapshot.routines.first?.days.first)
+        XCTAssertEqual(session.name, "Push Strength")
+        XCTAssertEqual(session.exercises, [
+            Exercise(id: exerciseID, name: "Bench Press", sets: 3, reps: 10, weightKg: 80)
+        ])
+        XCTAssertEqual(persistence.savedSnapshots.count, 4)
+    }
+
+    func testBlankTrainingSessionNameDoesNotMutateOrPersistCandidate() throws {
+        let persistence = InMemoryFitnessPersistence()
+        let store = try FitnessStore(persistence: persistence)
+        let routineID = UUID()
+        let sessionID = UUID()
+        try store.send(.createRoutine(id: routineID, name: "Strength", notes: ""))
+
+        XCTAssertThrowsError(
+            try store.send(.addTrainingSession(routineID: routineID, id: sessionID, name: " \n "))
+        ) { error in
+            XCTAssertEqual(error as? FitnessStoreError, .trainingSessionNameRequired)
+        }
+        XCTAssertEqual(store.snapshot.routines.first?.days, [])
+        XCTAssertEqual(persistence.savedSnapshots.count, 1)
+
+        try store.send(.addTrainingSession(routineID: routineID, id: sessionID, name: "Push"))
+        let savesBeforeInvalidRename = persistence.savedSnapshots.count
+
+        XCTAssertThrowsError(
+            try store.send(.renameTrainingSession(routineID: routineID, sessionID: sessionID, name: " "))
+        ) { error in
+            XCTAssertEqual(error as? FitnessStoreError, .trainingSessionNameRequired)
+        }
+        XCTAssertEqual(store.snapshot.routines.first?.days.first?.name, "Push")
+        XCTAssertEqual(persistence.savedSnapshots.count, savesBeforeInvalidRename)
+    }
+
+    func testDeleteTrainingSessionRemovesTheSessionAndKeepsRemainingSessions() throws {
+        let persistence = InMemoryFitnessPersistence()
+        let store = try FitnessStore(persistence: persistence)
+        let routineID = UUID()
+        let firstSessionID = UUID()
+        let deletedSessionID = UUID()
+        let thirdSessionID = UUID()
+        try store.send(.createRoutine(id: routineID, name: "Adjustable Plan", notes: ""))
+        try store.send(.addTrainingSession(routineID: routineID, id: firstSessionID, name: "Push"))
+        try store.send(.addTrainingSession(routineID: routineID, id: deletedSessionID, name: "Pull"))
+        try store.send(.addTrainingSession(routineID: routineID, id: thirdSessionID, name: "Legs"))
+
+        try store.send(.deleteTrainingSession(routineID: routineID, sessionID: deletedSessionID))
+
+        let remainingSessions = try XCTUnwrap(store.snapshot.routines.first?.days)
+        XCTAssertEqual(remainingSessions.map(\.id), [firstSessionID, thirdSessionID])
+        XCTAssertEqual(remainingSessions.map(\.name), ["Push", "Legs"])
+        XCTAssertEqual(persistence.savedSnapshots.count, 5)
+    }
+
+    func testCurrentSchemaDecodePreservesTrainingSessions() throws {
+        let routineID = UUID(uuidString: "C55A057D-AB38-4F92-9FD9-8525150AF38C")!
+        let routine = Routine(
+            id: routineID,
+            name: "Recovered Plan",
+            notes: nil,
+            days: [
+                TrainingDay(
+                    id: TrainingDay.stableID(routineID: routineID, number: 1),
+                    number: 1,
+                    name: "Push Strength"
+                )
+            ]
+        )
+        let data = try JSONEncoder().encode(FitnessSnapshot(routines: [routine]))
+
+        let decoded = try JSONDecoder().decode(FitnessSnapshot.self, from: data)
+
+        XCTAssertEqual(decoded.routines.first?.days.map(\.name), ["Push Strength"])
+    }
+
+    func testLegacySchemaMigratesToEmptySessionsAndCurrentVersion() throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -93,8 +225,7 @@ final class FitnessStoreTests: XCTestCase {
         let store = try FitnessStore(persistence: persistence)
 
         XCTAssertEqual(store.snapshot.schemaVersion, FitnessSnapshot.currentSchemaVersion)
-        XCTAssertEqual(store.snapshot.routines.first?.days.count, 7)
-        XCTAssertEqual(store.snapshot.routines.first?.days.map(\.name), TrainingDay.weekdayNames)
+        XCTAssertEqual(store.snapshot.routines.first?.days, [])
         XCTAssertTrue(store.snapshot.routines.first?.snapshots.isEmpty == true)
     }
 
@@ -102,13 +233,14 @@ final class FitnessStoreTests: XCTestCase {
         let persistence = InMemoryFitnessPersistence()
         let store = try FitnessStore(persistence: persistence)
         let routineID = UUID()
+        let sessionID = UUID()
         let exerciseID = UUID()
         try store.send(.createRoutine(id: routineID, name: "Strength", notes: ""))
-        let dayID = try XCTUnwrap(store.snapshot.routines.first?.days.first?.id)
+        try store.send(.addTrainingSession(routineID: routineID, id: sessionID, name: "Push"))
 
         try store.send(.addExercise(
             routineID: routineID,
-            dayID: dayID,
+            dayID: sessionID,
             id: exerciseID,
             name: "  Bench Press  ",
             sets: 3,
@@ -122,7 +254,7 @@ final class FitnessStoreTests: XCTestCase {
 
         try store.send(.updateExercise(
             routineID: routineID,
-            dayID: dayID,
+            dayID: sessionID,
             exerciseID: exerciseID,
             name: "Bench Press",
             sets: 4,
@@ -134,24 +266,25 @@ final class FitnessStoreTests: XCTestCase {
 
         try store.send(.deleteExercise(
             routineID: routineID,
-            dayID: dayID,
+            dayID: sessionID,
             exerciseID: exerciseID
         ))
         XCTAssertTrue(store.snapshot.routines.first?.days.first?.exercises.isEmpty == true)
-        XCTAssertEqual(persistence.savedSnapshots.count, 4)
+        XCTAssertEqual(persistence.savedSnapshots.count, 5)
     }
 
     func testInvalidExerciseDoesNotMutateOrPersistCandidate() throws {
         let persistence = InMemoryFitnessPersistence()
         let store = try FitnessStore(persistence: persistence)
         let routineID = UUID()
+        let sessionID = UUID()
         try store.send(.createRoutine(id: routineID, name: "Strength", notes: ""))
-        let dayID = try XCTUnwrap(store.snapshot.routines.first?.days.first?.id)
+        try store.send(.addTrainingSession(routineID: routineID, id: sessionID, name: "Push"))
         let savesBeforeInvalidCommand = persistence.savedSnapshots.count
 
         XCTAssertThrowsError(try store.send(.addExercise(
             routineID: routineID,
-            dayID: dayID,
+            dayID: sessionID,
             id: UUID(),
             name: "Bench Press",
             sets: 0,
@@ -169,7 +302,11 @@ final class FitnessStoreTests: XCTestCase {
         let routineID = UUID()
         let firstBenchID = UUID()
         let secondBenchID = UUID()
+        let pushSessionID = UUID()
+        let pullSessionID = UUID()
         try store.send(.createRoutine(id: routineID, name: "Strength", notes: ""))
+        try store.send(.addTrainingSession(routineID: routineID, id: pushSessionID, name: "Push"))
+        try store.send(.addTrainingSession(routineID: routineID, id: pullSessionID, name: "Pull"))
         let days = try XCTUnwrap(store.snapshot.routines.first?.days)
 
         try store.send(.addExercise(

@@ -9,7 +9,9 @@ final class ExerciseEditorValidationTests: FitnessUITestCase {
         routines.openCreateRoutine().save(name: "Editor Gates")
         routines.openRoutine(named: "Editor Gates")
 
-        let day = RoutineWorkspaceScreen(application: app).openDay(1)
+        let workspace = RoutineWorkspaceScreen(application: app)
+        workspace.addSession(named: "Push Strength")
+        let day = workspace.openDay(1)
         let editor = day.openAddExercise()
 
         editor.saveButton.requireExistence()

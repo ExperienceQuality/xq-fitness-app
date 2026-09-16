@@ -58,31 +58,58 @@ struct RoutineWorkspaceView: View {
                         )
                     }
                     
-                    Section(
-                        "Seven-Day Training Week"
-                    ) {
-                        ForEach(
-                            routine.days
-                                .sorted(
-                                    using: KeyPathComparator(
-                                        \.number
-                                    )
+                    Section("Training Sessions") {
+                        if routine.days.isEmpty {
+                            ContentUnavailableView {
+                                Label(
+                                    "No Training Sessions",
+                                    systemImage: "figure.strengthtraining.traditional"
                                 )
-                        ) { day in
-                            NavigationLink(
-                                value: AppRoute
-                                    .trainingDay(
-                                        routineID: routineID,
-                                        dayID: day.id
-                                    )
-                            ) {
-                                TrainingDayRow(
-                                    day: day
-                                )
+                            } description: {
+                                Text("Add the sessions you want in this routine.")
+                            } actions: {
+                                addTrainingSessionButton
                             }
-                            .accessibilityIdentifier(
-                                "\(FitnessAccessibility.trainingDayRow).\(day.number)"
-                            )
+                        } else {
+                            ForEach(
+                                routine.days
+                                    .sorted(
+                                        using: KeyPathComparator(
+                                            \.number
+                                        )
+                                    )
+                            ) { day in
+                                NavigationLink(
+                                    value: AppRoute
+                                        .trainingDay(
+                                            routineID: routineID,
+                                            dayID: day.id
+                                        )
+                                ) {
+                                    TrainingDayRow(
+                                        day: day
+                                    )
+                                }
+                                .accessibilityIdentifier(
+                                    "\(FitnessAccessibility.trainingDayRow).\(day.number)"
+                                )
+                                .swipeActions {
+                                    Button("Rename") {
+                                        router.sheet = .trainingSession(
+                                            routineID: routineID,
+                                            sessionID: day.id
+                                        )
+                                    }
+                                    .tint(.blue)
+
+                                    Button(
+                                        "Delete",
+                                        role: .destructive
+                                    ) {
+                                        deleteTrainingSession(day)
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -92,6 +119,13 @@ struct RoutineWorkspaceView: View {
                 .navigationTitle(
                     routine.name
                 )
+                .toolbar {
+                    ToolbarItem(
+                        placement: .primaryAction
+                    ) {
+                        addTrainingSessionButton
+                    }
+                }
             } else {
                 ContentUnavailableView(
                     "Routine Unavailable",
@@ -100,7 +134,7 @@ struct RoutineWorkspaceView: View {
             }
         }
         .alert(
-            "Could Not Create Snapshot",
+            "Could Not Update Routine",
             isPresented: errorIsPresented
         ) {
             Button(
@@ -113,6 +147,23 @@ struct RoutineWorkspaceView: View {
                 errorMessage ?? "Unknown error"
             )
         }
+    }
+
+    private var addTrainingSessionButton: some View {
+        Button {
+            router.sheet = .trainingSession(
+                routineID: routineID,
+                sessionID: nil
+            )
+        } label: {
+            Label(
+                "Add Training Session",
+                systemImage: "plus"
+            )
+        }
+        .accessibilityIdentifier(
+            FitnessAccessibility.addTrainingSessionButton
+        )
     }
     
     private var errorIsPresented: Binding<Bool> {
@@ -142,6 +193,20 @@ struct RoutineWorkspaceView: View {
                 .append(
                     .snapshotReport(
                         routineID: routineID
+                    )
+                )
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func deleteTrainingSession(_ day: TrainingDay) {
+        do {
+            try store
+                .send(
+                    .deleteTrainingSession(
+                        routineID: routineID,
+                        sessionID: day.id
                     )
                 )
         } catch {
@@ -189,7 +254,7 @@ private struct TrainingDayRow: View {
                 )
                 Text(
                     day.exercises.isEmpty
-                    ? "Rest or add exercises"
+                    ? "Add exercises"
                     : "\(day.exercises.count) exercise\(day.exercises.count == 1 ? "" : "s")"
                 )
                 .font(
@@ -240,7 +305,7 @@ struct TrainingDayView: View {
                             )
                         } description: {
                             Text(
-                                "Add the exercises planned for this training day."
+                                "Add the exercises planned for this training session."
                             )
                         } actions: {
                             addExerciseButton
@@ -299,7 +364,7 @@ struct TrainingDayView: View {
                 }
             } else {
                 ContentUnavailableView(
-                    "Training Day Unavailable",
+                    "Training Session Unavailable",
                     systemImage: "calendar.badge.exclamationmark"
                 )
             }
