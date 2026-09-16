@@ -10,6 +10,7 @@ final class SnapshotMaintainedProgressTests: FitnessUITestCase {
         routines.openRoutine(named: "Steady Plan")
 
         var workspace = RoutineWorkspaceScreen(application: app)
+        workspace.addSession(named: "Core Session")
         let day = workspace.openDay(1)
         day.openAddExercise().save(name: "Plank Hold")
         workspace = day.backToWorkspace()

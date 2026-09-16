@@ -30,6 +30,14 @@ struct FitnessRootView: View {
             switch destination {
             case .createRoutine:
                 RoutineEditorView(model: RoutineEditorModel(store: store))
+            case let .trainingSession(routineID, sessionID):
+                TrainingSessionEditorView(
+                    model: TrainingSessionEditorModel(
+                        store: store,
+                        routineID: routineID,
+                        sessionID: sessionID
+                    )
+                )
             case let .exercise(routineID, dayID, exerciseID):
                 ExerciseEditorView(
                     model: ExerciseEditorModel(
@@ -125,7 +133,7 @@ private struct RoutineEditorView: View {
                 if let validationMessage = model.validationMessage {
                     Section {
                         Text(validationMessage)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(XQPalette.destructive)
                             .accessibilityIdentifier(FitnessAccessibility.editorError)
                     }
                 }
@@ -151,6 +159,54 @@ private struct RoutineEditorView: View {
                     }
                     .disabled(!model.canSave)
                     .accessibilityIdentifier(FitnessAccessibility.routineSaveButton)
+                }
+            }
+        }
+    }
+}
+
+private struct TrainingSessionEditorView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var model: TrainingSessionEditorModel
+
+    init(model: TrainingSessionEditorModel) {
+        _model = State(initialValue: model)
+    }
+
+    var body: some View {
+        @Bindable var model = model
+
+        NavigationStack {
+            Form {
+                Section("Training Session") {
+                    TextField("Name", text: $model.name)
+                        .textInputAutocapitalization(.words)
+                        .accessibilityIdentifier(FitnessAccessibility.trainingSessionNameField)
+                }
+
+                if let validationMessage = model.validationMessage {
+                    Section {
+                        Text(validationMessage)
+                            .foregroundStyle(XQPalette.destructive)
+                            .accessibilityIdentifier(FitnessAccessibility.editorError)
+                    }
+                }
+            }
+            .navigationTitle(model.isEditing ? "Rename Session" : "New Session")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        if model.save() {
+                            dismiss()
+                        }
+                    }
+                    .disabled(!model.canSave)
+                    .accessibilityIdentifier(FitnessAccessibility.trainingSessionSaveButton)
                 }
             }
         }

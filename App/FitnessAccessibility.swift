@@ -1,3 +1,5 @@
+import SwiftUI
+
 enum FitnessAccessibility {
     static let emptyRoutineList = "fitness.routines.empty"
     static let createRoutineButton = "fitness.routines.create"
@@ -9,6 +11,9 @@ enum FitnessAccessibility {
     static let routineWorkspace = "fitness.routine.workspace"
     static let trainingDayRow = "fitness.training-day.row"
     static let trainingDayScreen = "fitness.training-day.screen"
+    static let addTrainingSessionButton = "fitness.training-session.add"
+    static let trainingSessionNameField = "fitness.training-session-editor.name"
+    static let trainingSessionSaveButton = "fitness.training-session-editor.save"
     static let addExerciseButton = "fitness.exercise.add"
     static let exerciseRow = "fitness.exercise.row"
     static let exerciseNameLabel = "fitness.exercise-editor.name-label"
@@ -24,4 +29,8 @@ enum FitnessAccessibility {
     static let snapshotReport = "fitness.snapshot.report"
     static let snapshotExercise = "fitness.snapshot.exercise"
     static let snapshotProgress = "fitness.snapshot.progress"
+}
+
+enum XQPalette {
+    static let destructive = Color(red: 0.95, green: 0.22, blue: 0.18)
 }

@@ -3,7 +3,7 @@ import XQXCUITestSupport
 
 @MainActor
 final class SevenDaySnapshotTests: FitnessUITestCase {
-    func testSevenDayExerciseDrillDownAndThreeSnapshotComparisonPersists() {
+    func testSessionExerciseDrillDownAndThreeSnapshotComparisonPersists() {
         var app = fitnessApp
         var routines = RoutineListScreen(application: app)
         routines.openCreateRoutine().save(name: "Progress Plan")
@@ -11,14 +11,8 @@ final class SevenDaySnapshotTests: FitnessUITestCase {
 
         var workspace = RoutineWorkspaceScreen(application: app)
         workspace.root.requireExistence()
-        for number in 1...7 {
-            workspace.day(number).requireExistence()
-            workspace.dayName(number).requireExistence()
-            XCTAssertEqual(
-                workspace.dayName(number).label,
-                ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][number - 1]
-            )
-        }
+        XCTAssertFalse(workspace.session(1).exists)
+        workspace.addSession(named: "Push Strength")
 
         var day = workspace.openDay(1)
         day.openAddExercise().save(name: "Bench Press")
@@ -64,7 +58,9 @@ final class SevenDaySnapshotTests: FitnessUITestCase {
         routines.openCreateRoutine().save(name: "Deletion Plan")
         routines.openRoutine(named: "Deletion Plan")
 
-        let day = RoutineWorkspaceScreen(application: app).openDay(1)
+        let workspace = RoutineWorkspaceScreen(application: app)
+        workspace.addSession(named: "Push Strength")
+        let day = workspace.openDay(1)
         day.openAddExercise().save(name: "Temporary Press")
         day.exercise(named: "Temporary Press").requireExistence()
 
@@ -80,9 +76,9 @@ final class SevenDaySnapshotTests: FitnessUITestCase {
         routines.openCreateRoutine().save(name: "Clear Inputs")
         routines.openRoutine(named: "Clear Inputs")
 
-        let editor = RoutineWorkspaceScreen(application: app)
-            .openDay(1)
-            .openAddExercise()
+        let workspace = RoutineWorkspaceScreen(application: app)
+        workspace.addSession(named: "Push Strength")
+        let editor = workspace.openDay(1).openAddExercise()
 
         editor.nameLabel.requireExistence()
         editor.setsLabel.requireExistence()

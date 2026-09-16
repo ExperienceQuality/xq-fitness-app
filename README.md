@@ -1,8 +1,8 @@
 # iOS XQ Fitness App
 
-Native SwiftUI fitness application for iPhone. Offline-only: routines, seven-day
-training plans, exercises, and the newest two progress snapshots are stored
-locally as versioned JSON.
+Native SwiftUI fitness application for iPhone. Offline-only: routines,
+customer-managed training sessions, exercises, and the newest two progress
+snapshots are stored locally as versioned JSON.
 
 Standalone Xcode project. Requires Xcode 16+, Swift 5.10+, XcodeGen (optional
 regenerate), iOS 17+.

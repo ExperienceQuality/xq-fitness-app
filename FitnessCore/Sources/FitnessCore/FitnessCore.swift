@@ -18,7 +18,7 @@ public struct Routine: Codable, Equatable, Identifiable, Sendable {
         self.id = id
         self.name = name
         self.notes = notes
-        self.days = Self.normalizedWeek(days ?? [], routineID: id)
+        self.days = days.map(Self.normalizedTrainingDays) ?? []
         self.snapshots = snapshots
     }
 
@@ -42,23 +42,16 @@ public struct Routine: Codable, Equatable, Identifiable, Sendable {
         )
     }
 
-    private static func normalizedWeek(_ days: [TrainingDay], routineID: UUID) -> [TrainingDay] {
+    private static func normalizedTrainingDays(_ days: [TrainingDay]) -> [TrainingDay] {
         var daysByNumber: [Int: TrainingDay] = [:]
-        for day in days where (1...7).contains(day.number) && daysByNumber[day.number] == nil {
+        for day in days where day.number > 0 && daysByNumber[day.number] == nil {
             daysByNumber[day.number] = day
         }
 
-        return (1...7).map { number in
-            guard var day = daysByNumber[number] else {
-                return TrainingDay(
-                    id: TrainingDay.stableID(routineID: routineID, number: number),
-                    number: number,
-                    name: TrainingDay.weekdayName(for: number)
-                )
-            }
-
+        return daysByNumber.keys.sorted().compactMap { number in
+            guard var day = daysByNumber[number] else { return nil }
             if day.name == "Day \(number)" {
-                day.name = TrainingDay.weekdayName(for: number)
+                day.name = TrainingDay.defaultName(for: number)
             }
             return day
         }
@@ -66,21 +59,8 @@ public struct Routine: Codable, Equatable, Identifiable, Sendable {
 }
 
 public struct TrainingDay: Codable, Equatable, Identifiable, Sendable {
-    public static let weekdayNames = [
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday",
-        "Sunday"
-    ]
-
-    public static func weekdayName(for number: Int) -> String {
-        guard weekdayNames.indices.contains(number - 1) else {
-            return "Day \(number)"
-        }
-        return weekdayNames[number - 1]
+    public static func defaultName(for number: Int) -> String {
+        "Session \(number)"
     }
 
     public let id: UUID
@@ -212,10 +192,25 @@ public struct FitnessSnapshot: Codable, Equatable, Sendable {
         }
         try mutation(&routines[routineIndex].days[dayIndex])
     }
+
+    fileprivate mutating func deleteTrainingSession(
+        routineID: UUID,
+        sessionID: UUID
+    ) throws {
+        guard let routineIndex = routines.firstIndex(where: { $0.id == routineID }) else {
+            throw FitnessStoreError.routineNotFound
+        }
+        guard let sessionIndex = routines[routineIndex].days.firstIndex(where: { $0.id == sessionID }) else {
+            throw FitnessStoreError.trainingDayNotFound
+        }
+        routines[routineIndex].days.remove(at: sessionIndex)
+    }
 }
 
 public enum FitnessCommand: Equatable, Sendable {
     case createRoutine(id: UUID, name: String, notes: String)
+    case addTrainingSession(routineID: UUID, id: UUID, name: String)
+    case renameTrainingSession(routineID: UUID, sessionID: UUID, name: String)
     case addExercise(
         routineID: UUID,
         dayID: UUID,
@@ -235,6 +230,8 @@ public enum FitnessCommand: Equatable, Sendable {
         weightKg: Double
     )
     case deleteExercise(routineID: UUID, dayID: UUID, exerciseID: UUID)
+    case deleteTrainingSession(routineID: UUID, sessionID: UUID)
+    case deleteTrainingDay(routineID: UUID, dayID: UUID)
     case createSnapshot(routineID: UUID, id: UUID, createdAt: Date)
 }
 
@@ -243,6 +240,7 @@ public enum FitnessStoreError: Error, Equatable, LocalizedError {
     case routineNotFound
     case trainingDayNotFound
     case exerciseNotFound
+    case trainingSessionNameRequired
     case exerciseNameRequired
     case exerciseMetricsInvalid
     case snapshotNotFound
@@ -254,9 +252,11 @@ public enum FitnessStoreError: Error, Equatable, LocalizedError {
         case .routineNotFound:
             return "The routine could not be found."
         case .trainingDayNotFound:
-            return "The training day could not be found."
+            return "The training session could not be found."
         case .exerciseNotFound:
             return "The exercise could not be found."
+        case .trainingSessionNameRequired:
+            return "Enter a training session name."
         case .exerciseNameRequired:
             return "Enter an exercise name."
         case .exerciseMetricsInvalid:
@@ -300,6 +300,20 @@ public final class FitnessStore {
                     notes: notes.nilIfBlank
                 )
             )
+        case let .addTrainingSession(routineID, id, name):
+            guard let routineIndex = candidate.routines.firstIndex(where: { $0.id == routineID }) else {
+                throw FitnessStoreError.routineNotFound
+            }
+            let normalizedName = try Self.trainingSessionName(name)
+            let nextNumber = (candidate.routines[routineIndex].days.map(\.number).max() ?? 0) + 1
+            candidate.routines[routineIndex].days.append(
+                TrainingDay(id: id, number: nextNumber, name: normalizedName)
+            )
+        case let .renameTrainingSession(routineID, sessionID, name):
+            let normalizedName = try Self.trainingSessionName(name)
+            try candidate.mutateDay(routineID: routineID, dayID: sessionID) { session in
+                session.name = normalizedName
+            }
         case let .addExercise(routineID, dayID, id, name, sets, reps, weightKg):
             try candidate.mutateDay(routineID: routineID, dayID: dayID) { day in
                 day.exercises.append(try Self.exercise(
@@ -330,6 +344,10 @@ public final class FitnessStore {
                 }
                 day.exercises.remove(at: index)
             }
+        case let .deleteTrainingSession(routineID, sessionID):
+            try candidate.deleteTrainingSession(routineID: routineID, sessionID: sessionID)
+        case let .deleteTrainingDay(routineID, dayID):
+            try candidate.deleteTrainingSession(routineID: routineID, sessionID: dayID)
         case let .createSnapshot(routineID, id, createdAt):
             guard let routineIndex = candidate.routines.firstIndex(where: { $0.id == routineID }) else {
                 throw FitnessStoreError.routineNotFound
@@ -385,6 +403,12 @@ public final class FitnessStore {
             throw FitnessStoreError.exerciseMetricsInvalid
         }
         return Exercise(id: id, name: normalizedName, sets: sets, reps: reps, weightKg: weightKg)
+    }
+
+    private static func trainingSessionName(_ name: String) throws -> String {
+        let normalizedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedName.isEmpty else { throw FitnessStoreError.trainingSessionNameRequired }
+        return normalizedName
     }
 
     private static func aggregateExercises(in routine: Routine) -> [ExerciseSnapshot] {
@@ -446,6 +470,87 @@ public final class RoutineEditorModel {
             validationMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             return false
         }
+    }
+}
+
+@Observable
+public final class TrainingSessionEditorModel {
+    public var name: String
+    public private(set) var validationMessage: String?
+
+    public let isEditing: Bool
+
+    private let store: FitnessStore
+    private let routineID: UUID
+    private let sessionID: UUID?
+    private let isUnavailable: Bool
+
+    public init(
+        store: FitnessStore,
+        routineID: UUID,
+        sessionID: UUID? = nil
+    ) {
+        self.store = store
+        self.routineID = routineID
+        self.sessionID = sessionID
+        self.isEditing = sessionID != nil
+
+        let routine = store.snapshot.routines.first { $0.id == routineID }
+        if let sessionID {
+            if let session = routine?.days.first(where: { $0.id == sessionID }) {
+                name = session.name
+                isUnavailable = false
+                validationMessage = nil
+            } else {
+                name = ""
+                isUnavailable = true
+                validationMessage = Self.message(for: routine == nil ? .routineNotFound : .trainingDayNotFound)
+            }
+        } else if routine == nil {
+            name = ""
+            isUnavailable = true
+            validationMessage = Self.message(for: .routineNotFound)
+        } else {
+            name = ""
+            isUnavailable = false
+            validationMessage = nil
+        }
+    }
+
+    public var canSave: Bool {
+        !isUnavailable && !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    @discardableResult
+    public func save(id: UUID = UUID()) -> Bool {
+        guard !isUnavailable else {
+            return false
+        }
+
+        do {
+            if let sessionID {
+                try store.send(.renameTrainingSession(
+                    routineID: routineID,
+                    sessionID: sessionID,
+                    name: name
+                ))
+            } else {
+                try store.send(.addTrainingSession(
+                    routineID: routineID,
+                    id: id,
+                    name: name
+                ))
+            }
+            validationMessage = nil
+            return true
+        } catch {
+            validationMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            return false
+        }
+    }
+
+    private static func message(for error: FitnessStoreError) -> String {
+        error.errorDescription ?? error.localizedDescription
     }
 }
 

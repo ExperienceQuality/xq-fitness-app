@@ -28,7 +28,7 @@ struct SnapshotReportView: View {
                         ContentUnavailableView(
                             "No Exercises Captured",
                             systemImage: "camera.metering.none",
-                            description: Text("Add exercises to the seven-day routine before the next snapshot.")
+                            description: Text("Add exercises to the routine before the next snapshot.")
                         )
                     } else {
                         Section("Exercise Progress") {
@@ -138,7 +138,7 @@ private struct ProgressIndicatorBadge: View {
         switch indicator {
         case .first, .maintained: .secondary
         case .increased: .green
-        case .decreased: .red
+        case .decreased: XQPalette.destructive
         }
     }
 }

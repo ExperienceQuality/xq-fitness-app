@@ -3,36 +3,41 @@ import XQXCUITestSupport
 
 @MainActor
 final class MultiDayExerciseTests: FitnessUITestCase {
-    func testExercisesCanBeAddedAcrossMultipleTrainingDays() {
+    func testExercisesCanBeAddedAcrossMultipleTrainingSessions() {
         let app = fitnessApp
         let routines = RoutineListScreen(application: app)
-        routines.openCreateRoutine().save(name: "Week Spread")
-        routines.openRoutine(named: "Week Spread")
+        routines.openCreateRoutine().save(name: "Session Spread")
+        routines.openRoutine(named: "Session Spread")
 
         var workspace = RoutineWorkspaceScreen(application: app)
-        var monday = workspace.openDay(1)
-        monday.openAddExercise().save(name: "Monday Squats")
-        monday.exercise(named: "Monday Squats").requireExistence()
-        workspace = monday.backToWorkspace()
+        workspace.addSession(named: "Push Strength")
+        workspace.addSession(named: "Pull Strength")
 
-        var wednesday = workspace.openDay(3)
-        wednesday.openAddExercise().save(name: "Wednesday Rows")
-        wednesday.exercise(named: "Wednesday Rows").requireExistence()
-        XCTAssertFalse(wednesday.exercise(named: "Monday Squats").exists)
-        workspace = wednesday.backToWorkspace()
+        var push = workspace.openDay(1)
+        push.openAddExercise().save(name: "Push Squats")
+        push.exercise(named: "Push Squats").requireExistence()
+        workspace = push.backToWorkspace()
 
-        monday = workspace.openDay(1)
-        monday.exercise(named: "Monday Squats").requireExistence()
-        XCTAssertFalse(monday.exercise(named: "Wednesday Rows").exists)
+        let pull = workspace.openDay(2)
+        pull.openAddExercise().save(name: "Pull Rows")
+        pull.exercise(named: "Pull Rows").requireExistence()
+        XCTAssertFalse(pull.exercise(named: "Push Squats").exists)
+        workspace = pull.backToWorkspace()
+
+        push = workspace.openDay(1)
+        push.exercise(named: "Push Squats").requireExistence()
+        XCTAssertFalse(push.exercise(named: "Pull Rows").exists)
     }
 
-    func testUpdatingSetsPersistsOnTrainingDay() {
+    func testUpdatingSetsPersistsOnTrainingSession() {
         let app = fitnessApp
         let routines = RoutineListScreen(application: app)
         routines.openCreateRoutine().save(name: "Sets Plan")
         routines.openRoutine(named: "Sets Plan")
 
-        let day = RoutineWorkspaceScreen(application: app).openDay(2)
+        let workspace = RoutineWorkspaceScreen(application: app)
+        workspace.addSession(named: "Pull Strength")
+        let day = workspace.openDay(1)
         day.openAddExercise().save(name: "Deadlift")
         day.openExercise(named: "Deadlift").update(sets: "5")
         day.exercise(named: "Deadlift").requireExistence()
