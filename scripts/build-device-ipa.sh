@@ -6,12 +6,47 @@ PROJECT_PATH="${ROOT}/ios-xq-fitness-app.xcodeproj"
 SCHEME="${IOS_SCHEME:-ios-xq-fitness-app}"
 CONFIGURATION="${IOS_CONFIGURATION:-Release}"
 BUNDLE_ID="com.xq.fitness.ios-xq-fitness-app"
-# Prefer IOS_DEVICE_ID; otherwise detect the plugged-in iPhone. Never hard-code
-# a personal hardware UDID in the repo.
-if [[ -z "${IOS_DEVICE_ID:-}" ]]; then
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+  cat <<'USAGE'
+Usage: ./scripts/build-device-ipa.sh [device-id]
+
+Build, validate, and optionally install the signed XQ Fitness IPA.
+
+Device selection precedence:
+  1. Positional device-id argument
+  2. IOS_DEVICE_ID environment variable
+  3. Plugged-in iPhone detected by plugged-iphone-udid.sh
+
+Signing:
+  Defaults to the working project team T99X93V7Y2. Override with
+  DEVELOPMENT_TEAM=<Apple team ID> when needed.
+
+Optional:
+  IOS_DEVICE_ID=<hardware UDID>
+  IOS_DEVICE_NAME=<substring>  Default: David when no device ID is supplied
+  IOS_DEVICE_MODEL=<substring>  Alternative disambiguator when multiple iPhones are connected
+  IOS_PROVISIONING_DEVICE_ID=<hardware UDID>  Default: selected device ID
+  INSTALL_TO_DEVICE=0        Build/export only
+  LAUNCH_ON_DEVICE=0         Install without launching
+  IOS_ARCHIVE_PATH=<path>
+  IOS_EXPORT_PATH=<directory>
+USAGE
+  exit 0
+fi
+
+if (( $# > 1 )); then
+  echo "Usage: $0 [device-id]" >&2
+  exit 2
+fi
+
+# Explicit positional argument wins over IOS_DEVICE_ID. Otherwise detect the
+# plugged-in iPhone. Never hard-code a personal hardware UDID in the repo.
+DEVICE_ID_ARGUMENT="${1:-}"
+if [[ -z "${DEVICE_ID_ARGUMENT}" && -z "${IOS_DEVICE_ID:-}" ]]; then
   export IOS_DEVICE_NAME="${IOS_DEVICE_NAME:-David}"
 fi
-DEVICE_ID="${IOS_DEVICE_ID:-$("${ROOT}/scripts/plugged-iphone-udid.sh")}"
+DEVICE_ID="${DEVICE_ID_ARGUMENT:-${IOS_DEVICE_ID:-$("${ROOT}/scripts/plugged-iphone-udid.sh")}}"
 PROVISIONING_DEVICE_ID="${IOS_PROVISIONING_DEVICE_ID:-${DEVICE_ID}}"
 INSTALL_TO_DEVICE="${INSTALL_TO_DEVICE:-1}"
 LAUNCH_ON_DEVICE="${LAUNCH_ON_DEVICE:-1}"
@@ -31,27 +66,6 @@ cleanup() {
   rm -rf "${STAGING_PATH}"
 }
 trap cleanup EXIT
-
-if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
-  cat <<'USAGE'
-Build, validate, and optionally install the signed XQ Fitness IPA.
-
-Signing:
-  Defaults to the working project team T99X93V7Y2. Override with
-  DEVELOPMENT_TEAM=<Apple team ID> when needed.
-
-Optional:
-  IOS_DEVICE_ID=<hardware UDID>  Default: plugged-in iPhone via plugged-iphone-udid.sh
-  IOS_DEVICE_NAME=<substring>  Default: David (iPhone Air) when IOS_DEVICE_ID is unset
-  IOS_DEVICE_MODEL=<substring>  Alternative disambiguator when multiple iPhones are connected
-  IOS_PROVISIONING_DEVICE_ID=<hardware UDID>  Default: IOS_DEVICE_ID
-  INSTALL_TO_DEVICE=0        Build/export only
-  LAUNCH_ON_DEVICE=0         Install without launching
-  IOS_ARCHIVE_PATH=<path>
-  IOS_EXPORT_PATH=<directory>
-USAGE
-  exit 0
-fi
 
 # Keep signing explicit and stable. This is the team configured for the
 # working Xcode project and provisioning profile.
@@ -145,8 +159,15 @@ log "IPA ready: ${IPA_PATH}"
 if [[ "${INSTALL_TO_DEVICE}" == "1" ]]; then
   "${ROOT}/scripts/prune-device-xctrunners.sh" "${DEVICE_ID}"
 
+  # An IPA is a ZIP container, not an installable app bundle. Both devicectl
+  # and ios-deploy require Payload/*.app; passing build/ipa or the .ipa itself
+  # makes the installer treat export metadata as the app and fail with 0xe8000067.
   unzip -q "${IPA_PATH}" -d "${STAGING_PATH}"
   APP_PATH="$(find "${STAGING_PATH}/Payload" -maxdepth 1 -type d -name '*.app' -print -quit)"
+  if [[ -z "${APP_PATH}" || ! -d "${APP_PATH}" ]]; then
+    echo "The exported IPA does not contain Payload/*.app: ${IPA_PATH}" >&2
+    exit 1
+  fi
   log "Installing on ${DEVICE_ID}"
   xcrun devicectl device install app --device "${DEVICE_ID}" "${APP_PATH}"
 
