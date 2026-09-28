@@ -51,11 +51,11 @@ With the iPhone connected, unlocked, and trusted:
 
 ```bash
 DEVELOPMENT_TEAM=<Apple-team-id> \
-IOS_PROVISIONING_DEVICE_ID=<hardware-udid> \
-./scripts/build-device-ipa.sh
+./scripts/build-device-ipa.sh <device-id>
 ```
 
 `DEVELOPMENT_TEAM` defaults to `T99X93V7Y2`. `IOS_DEVICE_ID` defaults to the
 plugged-in iPhone detected by `scripts/plugged-iphone-udid.sh` (David's iPhone
-Air for `./scripts/build-device-ipa.sh`). Override with `IOS_DEVICE_NAME` or
+Air for `./scripts/build-device-ipa.sh`). A positional device ID overrides
+`IOS_DEVICE_ID`; otherwise override detection with `IOS_DEVICE_NAME` or
 `IOS_DEVICE_MODEL`. Use `INSTALL_TO_DEVICE=0` to export only.
