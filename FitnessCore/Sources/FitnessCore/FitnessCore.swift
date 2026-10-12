@@ -207,6 +207,51 @@ public struct FitnessSnapshot: Codable, Equatable, Sendable {
     }
 }
 
+public enum FitnessSnapshotImportError: Error, Equatable, LocalizedError {
+    case invalidJSON
+    case unsupportedSchemaVersion(Int)
+    case existingDataRequiresConfirmation
+
+    public var errorDescription: String? {
+        switch self {
+        case .invalidJSON:
+            return "This file is not valid Fitness JSON. Export the data again from the old app and retry."
+        case .unsupportedSchemaVersion(let version):
+            return "This Fitness export uses unsupported schema version \(version). Update the app that created it, then export again."
+        case .existingDataRequiresConfirmation:
+            return "Existing Fitness data is present. Confirm replacement before importing."
+        }
+    }
+}
+
+public enum FitnessSnapshotImport {
+    public static func encode(_ snapshot: FitnessSnapshot) throws -> Data {
+        try encoder.encode(snapshot)
+    }
+
+    public static func decode(data: Data) throws -> FitnessSnapshot {
+        let snapshot: FitnessSnapshot
+        do {
+            snapshot = try decoder.decode(FitnessSnapshot.self, from: data)
+        } catch {
+            throw FitnessSnapshotImportError.invalidJSON
+        }
+
+        guard (1...FitnessSnapshot.currentSchemaVersion).contains(snapshot.schemaVersion) else {
+            throw FitnessSnapshotImportError.unsupportedSchemaVersion(snapshot.schemaVersion)
+        }
+        return try snapshot.migratedToCurrentSchema()
+    }
+
+    private static let encoder: JSONEncoder = {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return encoder
+    }()
+
+    private static let decoder = JSONDecoder()
+}
+
 public enum FitnessCommand: Equatable, Sendable {
     case createRoutine(id: UUID, name: String, notes: String)
     case addTrainingSession(routineID: UUID, id: UUID, name: String)
@@ -364,6 +409,15 @@ public final class FitnessStore {
             }
         }
 
+        try persistence.save(candidate)
+        snapshot = candidate
+    }
+
+    public func importSnapshot(_ importedSnapshot: FitnessSnapshot, replacingExisting: Bool) throws {
+        guard snapshot.routines.isEmpty || replacingExisting else {
+            throw FitnessSnapshotImportError.existingDataRequiresConfirmation
+        }
+        let candidate = try importedSnapshot.migratedToCurrentSchema()
         try persistence.save(candidate)
         snapshot = candidate
     }
@@ -836,7 +890,7 @@ public struct JSONFitnessPersistence: FitnessPersisting {
     }
 
     private func validateSchema(_ snapshot: FitnessSnapshot) throws {
-        guard snapshot.schemaVersion <= FitnessSnapshot.currentSchemaVersion else {
+        guard (1...FitnessSnapshot.currentSchemaVersion).contains(snapshot.schemaVersion) else {
             throw JSONFitnessPersistenceError.unsupportedSchemaVersion(snapshot.schemaVersion)
         }
     }
