@@ -438,6 +438,97 @@ final class FitnessStoreTests: XCTestCase {
         XCTAssertEqual(try persistence.load(), snapshot)
     }
 
+    func testExportThenImportRoundTripPreservesFitnessRecords() throws {
+        let routineID = UUID()
+        let dayID = UUID()
+        let exerciseID = UUID()
+        let snapshotID = UUID()
+        let source = FitnessSnapshot(routines: [
+            Routine(
+                id: routineID,
+                name: "Strength",
+                notes: "Keep form strict",
+                days: [TrainingDay(
+                    id: dayID,
+                    number: 1,
+                    name: "Push",
+                    exercises: [Exercise(
+                        id: exerciseID,
+                        name: "Bench Press",
+                        sets: 3,
+                        reps: 8,
+                        weightKg: 80
+                    )]
+                )],
+                snapshots: [RoutineSnapshot(
+                    id: snapshotID,
+                    createdAt: Date(timeIntervalSince1970: 123),
+                    exercises: [ExerciseSnapshot(
+                        name: "Bench Press",
+                        sets: 3,
+                        reps: 8,
+                        weightKg: 80
+                    )]
+                )]
+            )
+        ])
+
+        let imported = try FitnessSnapshotImport.decode(
+            data: FitnessSnapshotImport.encode(source)
+        )
+
+        XCTAssertEqual(imported, source)
+    }
+
+    func testSchemaVersion1ImportMigratesToCurrentSchemaAndPreservesStableIDs() throws {
+        let routineID = UUID()
+        let legacy = LegacySnapshot(
+            schemaVersion: 1,
+            routines: [LegacyRoutine(id: routineID, name: "Legacy", notes: "Old notes")]
+        )
+
+        let imported = try FitnessSnapshotImport.decode(data: JSONEncoder().encode(legacy))
+
+        XCTAssertEqual(imported.schemaVersion, FitnessSnapshot.currentSchemaVersion)
+        XCTAssertEqual(imported.routines.first?.id, routineID)
+        XCTAssertEqual(imported.routines.first?.name, "Legacy")
+        XCTAssertEqual(imported.routines.first?.notes, "Old notes")
+    }
+
+    func testImportRejectsInvalidJSON() {
+        XCTAssertThrowsError(try FitnessSnapshotImport.decode(data: Data("not-json".utf8))) { error in
+            XCTAssertEqual(error as? FitnessSnapshotImportError, .invalidJSON)
+        }
+    }
+
+    func testImportRejectsUnsupportedFutureSchema() throws {
+        let data = try JSONEncoder().encode(
+            FitnessSnapshot(schemaVersion: FitnessSnapshot.currentSchemaVersion + 1)
+        )
+
+        XCTAssertThrowsError(try FitnessSnapshotImport.decode(data: data)) { error in
+            XCTAssertEqual(
+                error as? FitnessSnapshotImportError,
+                .unsupportedSchemaVersion(FitnessSnapshot.currentSchemaVersion + 1)
+            )
+        }
+    }
+
+    func testImportRequiresExplicitReplacementWhenExistingDataIsPresent() throws {
+        let existing = FitnessSnapshot(routines: [Routine(id: UUID(), name: "Existing", notes: nil)])
+        let replacement = FitnessSnapshot(routines: [Routine(id: UUID(), name: "Imported", notes: nil)])
+        let persistence = InMemoryFitnessPersistence(snapshot: existing)
+        let store = try FitnessStore(persistence: persistence)
+
+        XCTAssertThrowsError(try store.importSnapshot(replacement, replacingExisting: false)) { error in
+            XCTAssertEqual(error as? FitnessSnapshotImportError, .existingDataRequiresConfirmation)
+        }
+        XCTAssertEqual(store.snapshot, existing)
+
+        try store.importSnapshot(replacement, replacingExisting: true)
+        XCTAssertEqual(store.snapshot, replacement)
+    }
+
     func testProductionStorageStartsEmptyAndSeparatesUITestNamespace() throws {
         let baseURL = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)

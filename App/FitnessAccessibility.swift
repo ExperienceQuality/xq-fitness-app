@@ -29,6 +29,10 @@ enum FitnessAccessibility {
     static let snapshotReport = "fitness.snapshot.report"
     static let snapshotExercise = "fitness.snapshot.exercise"
     static let snapshotProgress = "fitness.snapshot.progress"
+    static let exportDataButton = "fitness.data.export"
+    static let importDataButton = "fitness.data.import"
+    static let dataMenuButton = "fitness.data.menu"
+    static let dataImportError = "fitness.data.import.error"
 }
 
 enum XQPalette {

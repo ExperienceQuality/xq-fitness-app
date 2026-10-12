@@ -1,15 +1,48 @@
 import FitnessCore
 import SwiftUI
+import UniformTypeIdentifiers
+
+private struct FitnessExportDocument: FileDocument {
+    static var readableContentTypes: [UTType] { [.json] }
+
+    var data: Data
+
+    init(snapshot: FitnessSnapshot) throws {
+        data = try FitnessSnapshotImport.encode(snapshot)
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        guard let data = configuration.file.regularFileContents else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        self.data = data
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: data)
+    }
+}
 
 struct FitnessRootView: View {
     let store: FitnessStore
     @State private var router = AppRouter()
+    @State private var isExporting = false
+    @State private var isImporting = false
+    @State private var exportDocument: FitnessExportDocument?
+    @State private var pendingImport: FitnessSnapshot?
+    @State private var importError: String?
+    @State private var showingReplaceConfirmation = false
 
     var body: some View {
         @Bindable var router = router
 
         NavigationStack(path: $router.path) {
-            RoutineListView(store: store, router: router)
+            RoutineListView(
+                store: store,
+                router: router,
+                onExport: beginExport,
+                onImport: { isImporting = true }
+            )
                 .navigationDestination(for: AppRoute.self) { route in
                     switch route {
                     case .routine(let routineID):
@@ -49,12 +82,94 @@ struct FitnessRootView: View {
                 )
             }
         }
+        .fileExporter(
+            isPresented: $isExporting,
+            document: exportDocument,
+            contentType: .json,
+            defaultFilename: "fitness-data.json"
+        ) { result in
+            if case .failure(let error) = result {
+                importError = "Could not export Fitness data: \(error.localizedDescription)"
+            }
+        }
+        .fileImporter(
+            isPresented: $isImporting,
+            allowedContentTypes: [.json],
+            allowsMultipleSelection: false,
+            onCompletion: importFile
+        )
+        .confirmationDialog(
+            "Replace Existing Fitness Data?",
+            isPresented: $showingReplaceConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Replace Existing Data", role: .destructive) {
+                replacePendingImport()
+            }
+            Button("Cancel", role: .cancel) {
+                pendingImport = nil
+            }
+        } message: {
+            Text("This replaces all routines, training sessions, exercises, notes, and snapshots currently on this device.")
+        }
+        .alert("Fitness Data Error", isPresented: errorAlertBinding) {
+            Button("OK", role: .cancel) { importError = nil }
+        } message: {
+            Text(importError ?? "Unknown Fitness data error.")
+                .accessibilityIdentifier(FitnessAccessibility.dataImportError)
+        }
+    }
+
+    private var errorAlertBinding: Binding<Bool> {
+        Binding(
+            get: { importError != nil },
+            set: { if !$0 { importError = nil } }
+        )
+    }
+
+    private func beginExport() {
+        do {
+            exportDocument = try FitnessExportDocument(snapshot: store.snapshot)
+            isExporting = true
+        } catch {
+            importError = "Could not export Fitness data: \(error.localizedDescription)"
+        }
+    }
+
+    private func importFile(_ result: Result<[URL], Error>) {
+        do {
+            guard let url = try result.get().first else { return }
+            let scoped = url.startAccessingSecurityScopedResource()
+            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+            let imported = try FitnessSnapshotImport.decode(data: Data(contentsOf: url))
+            if store.snapshot.routines.isEmpty {
+                try store.importSnapshot(imported, replacingExisting: false)
+            } else {
+                pendingImport = imported
+                showingReplaceConfirmation = true
+            }
+        } catch {
+            importError = (error as? LocalizedError)?.errorDescription ??
+                "Could not import Fitness data: \(error.localizedDescription)"
+        }
+    }
+
+    private func replacePendingImport() {
+        guard let pendingImport else { return }
+        do {
+            try store.importSnapshot(pendingImport, replacingExisting: true)
+            self.pendingImport = nil
+        } catch {
+            importError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
     }
 }
 
 private struct RoutineListView: View {
     let store: FitnessStore
     let router: AppRouter
+    let onExport: () -> Void
+    let onImport: () -> Void
 
     var body: some View {
         Group {
@@ -93,8 +208,18 @@ private struct RoutineListView: View {
         }
         .navigationTitle("Routines")
         .toolbar {
-            if !store.snapshot.routines.isEmpty {
-                ToolbarItem(placement: .primaryAction) {
+            ToolbarItemGroup(placement: .primaryAction) {
+                Menu {
+                    Button("Import Fitness Data", action: onImport)
+                        .accessibilityIdentifier(FitnessAccessibility.importDataButton)
+                    Button("Export Fitness Data", action: onExport)
+                        .accessibilityIdentifier(FitnessAccessibility.exportDataButton)
+                } label: {
+                    Label("Fitness Data", systemImage: "arrow.up.arrow.down")
+                        .accessibilityIdentifier(FitnessAccessibility.dataMenuButton)
+                }
+
+                if !store.snapshot.routines.isEmpty {
                     Button {
                         router.sheet = .createRoutine
                     } label: {
